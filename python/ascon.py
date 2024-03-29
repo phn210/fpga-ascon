@@ -131,7 +131,7 @@ class Ascon:
 			else len(associated_data_hex) // block_size_in_hex
 		for i in range(s):
 			S[0] ^= int(associated_data_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
-			if r > 64:
+			if r == 128:
 				S[1] ^= int(associated_data_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
 			self.permutation(S, b)
 		S[4] ^= 1
@@ -141,7 +141,6 @@ class Ascon:
 		block_size_in_hex = int(r / 4)
 		plaintext_hex = plaintext.hex() + hex(128)[2:]
 		plaintext_hex = plaintext_hex.ljust((len(plaintext_hex) // block_size_in_hex + 1) * block_size_in_hex, '0')
-		print(plaintext_hex)
 
 		# XOR and perform permutation
 		t = len(plaintext_hex) // block_size_in_hex \
@@ -150,16 +149,15 @@ class Ascon:
 		for i in range(t - 1):
 			S[0] ^= int(plaintext_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
 			c = hex(S[0])[2:].rjust(16, '0')
-			if r > 64:
+			if r == 128:
 				S[1] ^= int(plaintext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
 				c += hex(S[1])[2:].rjust(16, '0')
 			C.append(c)
 			self.permutation(S, b)
 		i = t - 1
-		print(plaintext_hex[i * block_size_in_hex : i * block_size_in_hex + 16])
 		S[0] ^= int(plaintext_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
 		c = hex(S[0])[2:].rjust(16, '0')
-		if r > 64:
+		if r == 128:
 			S[1] ^= int(plaintext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
 			c += hex(S[1])[2:].rjust(16, '0')
 		c = c[:int(len(plaintext) * 8 % r / 4)]
@@ -170,33 +168,38 @@ class Ascon:
 		ciphertext_hex = ciphertext.hex()
 
 		# XOR and perform permutation
-		t = len(ciphertext_hex) // block_size_in_hex - 1 \
+		t = len(ciphertext_hex) // block_size_in_hex \
 			if len(ciphertext_hex) % block_size_in_hex == 0 \
-			else len(ciphertext_hex) // block_size_in_hex
+			else len(ciphertext_hex) // block_size_in_hex + 1
 		for i in range(t - 1):
 			c = int(ciphertext_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
 			p = hex(S[0] ^ c)[2:].rjust(16, '0')
 			S[0] = int(ciphertext_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
-			if r > 64:
+			if r == 128:
 				c = int(ciphertext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
 				p += hex(S[1] ^ c)[2:].rjust(16, '0')
 				S[1] = c
 			P.append(p)
-			print(len(p))
 			self.permutation(S, b)
 		i = t - 1
-		c = int(ciphertext_hex[(t - 1) * block_size_in_hex : (t - 1) * block_size_in_hex + 16], 16)
+		c = int(ciphertext_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
 		if r == 64:
-			p = hex(int(hex(S[0])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:].rjust(16, '0')
+			p = hex(int(hex(S[0])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:]
 			P.append(p)
 			S[0] ^= int((p + '80').ljust(int(64 / 4), '0'), 16)
-		if r > 64:
-			p = hex(S[0] ^ c)[2:].rjust(16, '0')
-			S[0] ^= p
-			c = int(ciphertext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
-			p += hex(int(hex(S[1])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:].rjust(16, '0')
+		if r == 128:
+			print(len(ciphertext_hex[i * block_size_in_hex:]))
+			if (len(ciphertext_hex[i * block_size_in_hex:]) <= 16):
+				p = hex(int(hex(S[0])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:]
+				S[0] = int(hex(int(hex(S[0])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:].rjust(16, '0'), 16)
+			else:
+				p = hex(S[0] ^ c)[2:]
+				S[0] = int(p, 16)
+				c = int(ciphertext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
+				tmp_p = hex(int(hex(S[1])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:].rjust(16, '0')
+				S[1] ^= int((tmp_p + '80').ljust(int(64 / 4), '0'), 16)
+				p += tmp_p
 			P.append(p)
-			S[1] ^= int(hex(int(hex(S[1])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:].rjust(16, '0'), 16)
 		
 
 	def finalize_aead(self, S, k, r, a, key):
@@ -257,19 +260,35 @@ class Ascon:
 
 
 ascon = Ascon()
+# print('Encryption result:', ascon.encrypt(
+# 	b'babecafebabecafe',
+# 	b'1234567812345678',
+# 	b'this message comes from me',
+# 	b'bonjour cryptis adl',
+# 	AEADVariants.ASCON_128
+# ))
+# print('Decryption result:', ascon.decrypt(
+# 	b'babecafebabecafe',
+# 	b'1234567812345678',
+# 	b'this message comes from me',
+# 	b'X\x85\xac\x00\x19h6}&\x8b\xe3\x7f\xc2\xae\xae\x80\x98D\x1b',
+# 	b'V\xe2\x04"y\xa6\xdc\xfe\xb24@\x80\xb3j\xb0(',
+# 	AEADVariants.ASCON_128
+# ))
+
 print('Encryption result:', ascon.encrypt(
 	b'babecafebabecafe',
 	b'1234567812345678',
 	b'this message comes from me',
-	b'bonjour cryptis adl',
-	AEADVariants.ASCON_128
+	b'bonjour cryptis adl bonjour cryptis adl bonjour',
+	AEADVariants.ASCON_128A
 ))
 print('Decryption result:', ascon.decrypt(
 	b'babecafebabecafe',
 	b'1234567812345678',
 	b'this message comes from me',
-	b'X\x85\xac\x00\x19h6}&\x8b\xe3',
-	b'\x0fn\xa4,\xdc\x11Ag6\x17b\xb2\xbf+\x1a\xf7',
-	AEADVariants.ASCON_128
+	b'7\x11\xc4\xf3%\xff~\xd2\xae\xa5\x15\x08\xefm<\x8b\xe7MYxR\xbfR?6\xb9_4\x08\xbaa\x04\x9e/\x05\xbf\x94\xac\xfe\xe1\xc0\x014\x8b\xfb\x1b\xce3?\xacR\xd9\xb8u\x8d\xdeJvF\xff\x154\xbf',
+	b'\xf24\x8f\xe5F\x11\xd3\x93\xb4(\xa3\xa95M\x8f\x83',
+	AEADVariants.ASCON_128A
 ))
 	
