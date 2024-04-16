@@ -1,16 +1,16 @@
+import math
 from enum import Enum
 from utils import rotr, print_S
 
-
 class AEADVariants(Enum):
 	ASCON_128 = 'Ascon-128'
-	ASCON_128A = 'Ascon-128a'
-	
+	ASCON_128A = 'Ascon-128a'	
 
 class HashVariants(Enum):
 	ASCON_HASH = 'Ascon-Hash'
 	ASCON_HASHA = 'Ascon-Hasha'
-
+	# ASCON_XOF = 'Ascon-Xof'
+	# ASCON_XOFA = 'Ascon-Xofa'
 class Ascon:
 	_logging: bool = True
 
@@ -34,7 +34,16 @@ class Ascon:
 		return [k, r, a, b]
 	
 	def get_hash_parameters(self, variant):
-		pass
+		h = 256
+		r = 64
+		a = 12
+		b = 0
+		if (variant is HashVariants.ASCON_HASH):
+			b = 12
+		elif (variant is HashVariants.ASCON_HASHA):
+			b = 8
+		assert b > 0 
+		return [h,r,a,b]
 
 	def encrypt(self, key: bytes, nonce: bytes, associated_data: bytes, plaintext: bytes, variant = AEADVariants.ASCON_128):
 		# Assign parameters
@@ -85,8 +94,73 @@ class Ascon:
 
 		return [plaintext, isAuth]
 
-	def hash(self, message: bytes, variant = HashVariants.ASCON_HASH):
-		pass
+	def hash(self, message: bytes,l: int, variant = HashVariants.ASCON_HASH):
+		# Assign parameters
+		[h,r,a,b] = self.get_hash_parameters(variant)
+
+		# Initialization
+		S = [0,0,0,0,0]
+		self.initialize_hash(S,h,r,a,b)
+
+		# Absorbing message
+		self.absorb(S,r,b,message)
+
+		# Squeezing
+		H = []
+		self.squeeze(S,H,h,l,r,a,b)
+		hashValue = bytes.fromhex(''.join(H))
+
+		return hashValue
+	
+	def initialize_hash(self,S,h,r,a,b):
+		# Calculate IV
+		IV = (
+			hex(r)[2:].rjust(2, '0') + 
+			hex(a)[2:].rjust(2, '0') + 
+			hex(a-b)[2:].rjust(2, '0') + 
+			hex(h)[2:].rjust(8, '0')
+		).rjust(16,'0') 
+		if self._logging: print('IV:', IV)
+
+		# Assign initial state
+		S_hex = IV.ljust(int((80)),'0')
+		S = list( int(S_hex[i * 16 : (i + 1) * 16],16) for i in range(5) )
+		if self._logging: print('S:', S)
+
+		# Perform permutation
+		self.permutation(S, a)
+		if self._logging: print('S permuted:', S)
+
+	def absorb(self, S, r, b, message):
+		# Pad message
+		block_size_in_hex = int(r / 4)
+		message_hex = message.hex() + hex(128)[2:]
+		message_hex = message_hex.ljust((len(message_hex) // block_size_in_hex + 1) * block_size_in_hex, '0')
+		print('Message: ',message_hex)
+
+		# XOR and perform permutation
+		s = len(message_hex) // block_size_in_hex \
+			if len(message_hex) % block_size_in_hex == 0 \
+			else len(message_hex) // block_size_in_hex + 1
+		
+		for i in range(s - 1):
+			S[0] ^= int(message_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
+			self.permutation(S,b)
+		i = s-1
+		S[0] ^= int(message_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
+
+	#TO DO
+	def squeeze(self,S,H,h,l,r,a,b):
+		if l <= h:
+			self.permutation(S,a)
+			t = math.ceil(l/r)
+			for _ in range(t):
+				h_i = hex(S[0])[2:]
+				self.permutation(S,b)
+				H.append(h_i)
+				print ('hash: ',h_i)
+		else:
+			print('Invalid output length!')
 
 	def initialize_aead(self, S, k, r, a, b, key, nonce):
 		# Calculate IV
@@ -198,7 +272,6 @@ class Ascon:
 			P.append(p)
 			S[1] ^= int(hex(int(hex(S[1])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:].rjust(16, '0'), 16)
 		
-
 	def finalize_aead(self, S, k, r, a, key):
 		# Prepare xor
 		padded_key_hex = '0' * int(r/4) + key.hex() + '0' * int((320-r-k)/4)
@@ -255,21 +328,25 @@ class Ascon:
 			print_S('Permutation Output', S)
 			print()
 
+ascon = Ascon(True)
+# print('Encryption result:', ascon.encrypt(
+# 	b'babecafebabecafe',
+# 	b'1234567812345678',
+# 	b'this message comes from me',
+# 	b'bonjour cryptis adl',
+# 	AEADVariants.ASCON_128
+# ))
+# print('Decryption result:', ascon.decrypt(
+# 	b'babecafebabecafe',
+# 	b'1234567812345678',
+# 	b'this message comes from me',
+# 	b'X\x85\xac\x00\x19h6}&\x8b\xe3',
+# 	b'\x0fn\xa4,\xdc\x11Ag6\x17b\xb2\xbf+\x1a\xf7',
+# 	AEADVariants.ASCON_128
+# ))
 
-ascon = Ascon()
-print('Encryption result:', ascon.encrypt(
-	b'babecafebabecafe',
-	b'1234567812345678',
-	b'this message comes from me',
-	b'bonjour cryptis adl',
-	AEADVariants.ASCON_128
+print('Hash result: ', ascon.hash(
+	b'Hello this is our prj ADL',
+	256,
+	HashVariants.ASCON_HASH
 ))
-print('Decryption result:', ascon.decrypt(
-	b'babecafebabecafe',
-	b'1234567812345678',
-	b'this message comes from me',
-	b'X\x85\xac\x00\x19h6}&\x8b\xe3',
-	b'\x0fn\xa4,\xdc\x11Ag6\x17b\xb2\xbf+\x1a\xf7',
-	AEADVariants.ASCON_128
-))
-	
