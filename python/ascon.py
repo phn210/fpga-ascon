@@ -1,6 +1,6 @@
 import math
 from enum import Enum
-from utils import rotr, print_S
+from utils import *
 
 class AEADVariants(Enum):
 	ASCON_128 = 'Ascon-128'
@@ -67,6 +67,9 @@ class Ascon:
 		T = self.finalize_aead(S, k, r, a, key)
 		tag = bytes.fromhex(''.join(T))
 
+		assert len(plaintext) == len(ciphertext)
+		assert len(tag) == 16
+
 		return [ciphertext, tag]
 		
 	def decrypt(self, key: bytes, nonce: bytes, associated_data: bytes, ciphertext: bytes, tag = bytes, variant = AEADVariants.ASCON_128):
@@ -74,6 +77,7 @@ class Ascon:
 		[k, r, a, b] = self.get_aead_parameters(variant)
 		assert len(nonce) == 16
 		assert len(key) == (k/8)
+		assert len(tag) == 16
 
 		# Initialization
 		S = [0, 0, 0, 0, 0]
@@ -91,6 +95,8 @@ class Ascon:
 		T = self.finalize_aead(S, k, r, a, key)
 		authTag = bytes.fromhex(''.join(T))
 		isAuth = (authTag == tag)
+
+		assert len(plaintext) == len(ciphertext)
 
 		return [plaintext, isAuth]
 
@@ -114,62 +120,86 @@ class Ascon:
 	
 	def initialize_hash(self,S,h,r,a,b):
 		# Calculate IV
-		IV = (
-			hex(r)[2:].rjust(2, '0') + 
-			hex(a)[2:].rjust(2, '0') + 
-			hex(a-b)[2:].rjust(2, '0') + 
-			hex(h)[2:].rjust(8, '0')
-		).rjust(16,'0') 
+		if self._logging: print_info('Initialize Hash...')
+
+		IV = pad_hex(
+				int_to_hex(r, 2) + 
+				int_to_hex(a, 2) + 
+				int_to_hex(a-b, 2) + 
+				int_to_hex(h, 8),
+				int(16),
+				False
+			)
 		if self._logging: print('IV:', IV)
 
 		# Assign initial state
-		S_hex = IV.ljust(int((80)),'0')
+		S_hex = pad_hex(IV, int(80), True)
 		S = list( int(S_hex[i * 16 : (i + 1) * 16],16) for i in range(5) )
 		if self._logging: print('S:', S)
 
 		# Perform permutation
 		self.permutation(S, a)
 		if self._logging: print('S permuted:', S)
+		if self._logging: print_info('Initialize Hash --> DONE')
 
 	def absorb(self, S, r, b, message):
-		# Pad message
+		if self._logging: print_info('Absorbing...')
+
+		# Number of r-bit blocks of M || 1 || 0*
 		block_size_in_hex = int(r / 4)
-		message_hex = message.hex() + hex(128)[2:]
-		message_hex = message_hex.ljust((len(message_hex) // block_size_in_hex + 1) * block_size_in_hex, '0')
-		print('Message: ',message_hex)
+		message_hex = message.hex() + int_to_hex(128)
+
+		num_blocks = len(message_hex) // block_size_in_hex \
+					if len(message_hex) % block_size_in_hex == 0 \
+					else len(message_hex) // block_size_in_hex + 1
+		
+		# Pad message
+		padding_size = num_blocks * block_size_in_hex
+		message_hex = pad_hex(message_hex, padding_size, True)
 
 		# XOR and perform permutation
-		s = len(message_hex) // block_size_in_hex \
-			if len(message_hex) % block_size_in_hex == 0 \
-			else len(message_hex) // block_size_in_hex + 1
-		
-		for i in range(s - 1):
-			S[0] ^= int(message_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
+		for i in range(num_blocks - 1):
+			m = message_hex[i * block_size_in_hex : i * block_size_in_hex + 16]
+			S[0] ^= hex_to_int(m)
 			self.permutation(S,b)
-		i = s-1
-		S[0] ^= int(message_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
+		i = num_blocks - 1
+		S[0] ^= hex_to_int(m)
+		if self._logging: print_info('Absorb --> DONE')
 
-	#TO DO
 	def squeeze(self,S,H,h,l,r,a,b):
-		if l <= h:
-			self.permutation(S,a)
-			t = math.ceil(l/r)
-			for _ in range(t):
-				h_i = hex(S[0])[2:]
-				self.permutation(S,b)
-				H.append(h_i)
-				print ('hash: ',h_i)
-		else:
-			print('Invalid output length!')
+		if self._logging: print_info('Squeezing...')
+		# Perform permutation 
+		self.permutation(S,a)
 
-	def initialize_aead(self, S, k, r, a, b, key, nonce):
+		# Extracting hash output
+		if l <= h:
+			t = math.ceil(l/r)
+			for i in range(t):
+				H_i = int_to_hex(S[0],16)
+				# print ('hash: ',H_i)
+				self.permutation(S,b)
+				if i < t-1:
+					H.append(H_i)
+			mod_in_hex = l%r
+			print('l mod r:', mod_in_hex)
+			H_t = int_to_hex(S[0], 16)[:mod_in_hex]
+			H.append(H_t)
+		else:
+			if self._logging: print('Invalid output length!')
+
+		if self._logging: print_info('Squeeze --> DONE')
+
+	def initialize_aead(self, S, k, r, a, b, key: bytes, nonce):
 		# Calculate IV
-		IV = (
-			hex(k)[2:].rjust(2, '0') + 
-			hex(r)[2:].rjust(2, '0') + 
-			hex(a)[2:].rjust(2, '0') + 
-			hex(b)[2:].rjust(2, '0')
-		).ljust(int((320-k-128)/4), '0')
+		if self._logging: print_info('Initialize AEAD...')
+		IV = pad_hex(
+			int_to_hex(k, 2) + 
+			int_to_hex(r, 2) + 
+			int_to_hex(a, 2) + 
+			int_to_hex(b, 2),
+			int((320-k-128)/4),
+			True
+		)
 		if self._logging: print('IV:', IV)
 
 		# Assign initial state
@@ -182,125 +212,162 @@ class Ascon:
 		if self._logging: print('S permuted:', S)
 		
 		# Pad and split key
-		key_hex = key.hex().rjust(int(320 / 4), '0')
-		K = list( int(key_hex[i * 16 : (i + 1) * 16], 16) for i in range(5) )
+		key_hex = pad_hex(key.hex(), int(320 / 4))
+		K = list( hex_to_int(key_hex[i * 16 : (i + 1) * 16]) for i in range(5) )
 		if self._logging: print('K:', K)
 
 		# XOR initial state with secret key K
 		S = [S[i] ^ K[i] for i in range(5)]
 		if self._logging: print('S xor:', S)
+		if self._logging: print_info('Initialize AEAD --> DONE')
 
 	def process_associated_data(self, S, r, b, associated_data):
+		if self._logging: print_info('Process associated data...')
 		if len(associated_data) == 0:
 			return
-		
-		# Pad associate data
+
+		# Number of r-bit blocks of A || 1 || 0*
 		block_size_in_hex = int(r / 4)
-		associated_data_hex = associated_data.hex() + hex(128)[2:]
-		associated_data_hex = associated_data_hex.ljust((len(associated_data_hex) // block_size_in_hex + 1) * block_size_in_hex, '0')
+		associated_data_hex = associated_data.hex() + int_to_hex(128)
+		num_blocks = len(associated_data_hex) // block_size_in_hex \
+					if len(associated_data_hex) % block_size_in_hex == 0 \
+					else len(associated_data_hex) // block_size_in_hex + 1
+
+		# Pad associate data
+		padding_size = num_blocks * block_size_in_hex
+		associated_data_hex = pad_hex(associated_data_hex, padding_size, True)
 
 		# XOR and perform permutation
-		s = len(associated_data_hex) // block_size_in_hex - 1 \
-			if len(associated_data_hex) % block_size_in_hex == 0 \
-			else len(associated_data_hex) // block_size_in_hex
-		for i in range(s):
-			S[0] ^= int(associated_data_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
-			if r > 64:
-				S[1] ^= int(associated_data_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
+		for i in range(num_blocks):
+			S[0] ^= hex_to_int(associated_data_hex[i * block_size_in_hex : i * block_size_in_hex + 16])
+			if r == 128:
+				S[1] ^= hex_to_int(associated_data_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32])
 			self.permutation(S, b)
 		S[4] ^= 1
+		if self._logging: print_info('Process associated data --> DONE')
 
-	def process_plaintext(self, S, C, r, b, plaintext):
-		# Pad plaintext
+	def process_plaintext(self, S, C, r, b, plaintext: bytes):
+		if self._logging: print_info('Process plaintext...')
+		# Number of r-bit blocks of P || 1 || 0*
 		block_size_in_hex = int(r / 4)
-		plaintext_hex = plaintext.hex() + hex(128)[2:]
-		plaintext_hex = plaintext_hex.ljust((len(plaintext_hex) // block_size_in_hex + 1) * block_size_in_hex, '0')
-		print(plaintext_hex)
+		plaintext_hex = plaintext.hex() + int_to_hex(128)
+
+		num_blocks = len(plaintext_hex) // block_size_in_hex \
+					if len(plaintext_hex) % block_size_in_hex == 0 \
+					else len(plaintext_hex) // block_size_in_hex + 1
+		
+		# Pad plaintext
+		padding_size = num_blocks * block_size_in_hex
+		plaintext_hex = pad_hex(plaintext_hex, padding_size, True)
 
 		# XOR and perform permutation
-		t = len(plaintext_hex) // block_size_in_hex \
-			if len(plaintext_hex) % block_size_in_hex == 0 \
-			else len(plaintext_hex) // block_size_in_hex + 1
-		for i in range(t - 1):
-			S[0] ^= int(plaintext_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
-			c = hex(S[0])[2:].rjust(16, '0')
-			if r > 64:
-				S[1] ^= int(plaintext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
-				c += hex(S[1])[2:].rjust(16, '0')
+		for i in range(num_blocks - 1):
+			p = plaintext_hex[i * block_size_in_hex : i * block_size_in_hex + 16]
+			S[0] ^= hex_to_int(p)
+			c = int_to_hex(S[0], 16)
+			if r == 128:
+				p = plaintext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32]
+				S[1] ^= hex_to_int(p)
+				c += int_to_hex(S[1], 16)
 			C.append(c)
 			self.permutation(S, b)
-		i = t - 1
-		print(plaintext_hex[i * block_size_in_hex : i * block_size_in_hex + 16])
-		S[0] ^= int(plaintext_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
-		c = hex(S[0])[2:].rjust(16, '0')
-		if r > 64:
-			S[1] ^= int(plaintext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
-			c += hex(S[1])[2:].rjust(16, '0')
-		c = c[:int(len(plaintext) * 8 % r / 4)]
+		
+		i = num_blocks - 1
+		p = plaintext_hex[i * block_size_in_hex : i * block_size_in_hex + 16]
+		S[0] ^= hex_to_int(p)
+		mod_in_hex = int(len(plaintext) * 2) % block_size_in_hex
+		if self._logging: print('P mod r:', mod_in_hex)
+		if mod_in_hex == 0: return
+		if r == 64:
+			c = int_to_hex(S[0], 16)[:mod_in_hex]
+		if r == 128:
+			p = plaintext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32]
+			S[1] ^= hex_to_int(p)
+			c = (int_to_hex(S[0], 16) + int_to_hex(S[1], 16))[:mod_in_hex]
 		C.append(c)
+		if self._logging: print_info('Process plaintext --> DONE')
 
 	def process_ciphertext(self, S, P, r, b, ciphertext):
+		if self._logging: print_info('Process ciphertext...')
+		# Number of r-bit blocks of C
 		block_size_in_hex = int(r / 4)
 		ciphertext_hex = ciphertext.hex()
 
+		num_blocks = (len(ciphertext_hex) + 2) // block_size_in_hex \
+					if (len(ciphertext_hex) + 2) % block_size_in_hex == 0 \
+					else (len(ciphertext_hex) + 2) // block_size_in_hex + 1
+
 		# XOR and perform permutation
-		t = len(ciphertext_hex) // block_size_in_hex - 1 \
-			if len(ciphertext_hex) % block_size_in_hex == 0 \
-			else len(ciphertext_hex) // block_size_in_hex
-		for i in range(t - 1):
-			c = int(ciphertext_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
-			p = hex(S[0] ^ c)[2:].rjust(16, '0')
-			S[0] = int(ciphertext_hex[i * block_size_in_hex : i * block_size_in_hex + 16], 16)
-			if r > 64:
-				c = int(ciphertext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
-				p += hex(S[1] ^ c)[2:].rjust(16, '0')
-				S[1] = c
+		for i in range(num_blocks - 1):
+			c = ciphertext_hex[i * block_size_in_hex : i * block_size_in_hex + 16]
+			p = int_to_hex(S[0] ^ hex_to_int(c), 16)
+			S[0] = hex_to_int(c)
+			if r == 128:
+				c = ciphertext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32]
+				p += int_to_hex(S[1] ^ hex_to_int(c), 16)
+				S[1] = hex_to_int(c)
 			P.append(p)
-			print(len(p))
 			self.permutation(S, b)
-		i = t - 1
-		c = int(ciphertext_hex[(t - 1) * block_size_in_hex : (t - 1) * block_size_in_hex + 16], 16)
+
+		i = num_blocks - 1
+		c = ciphertext_hex[i * block_size_in_hex : i * block_size_in_hex + 16]
+		mod_in_hex = int(len(ciphertext) * 2) % block_size_in_hex
+		if self._logging: print('C mod r:', mod_in_hex)
+		if mod_in_hex == 0:
+			S[0] ^= hex_to_int(pad_hex('80', 16, True))
+			return
 		if r == 64:
-			p = hex(int(hex(S[0])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:].rjust(16, '0')
-			P.append(p)
-			S[0] ^= int((p + '80').ljust(int(64 / 4), '0'), 16)
-		if r > 64:
-			p = hex(S[0] ^ c)[2:].rjust(16, '0')
-			S[0] ^= p
-			c = int(ciphertext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32], 16)
-			p += hex(int(hex(S[1])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:].rjust(16, '0')
-			P.append(p)
-			S[1] ^= int(hex(int(hex(S[1])[2:][:int(len(ciphertext) * 8 % r / 4)], 16) ^ c)[2:].rjust(16, '0'), 16)
-		
-	def finalize_aead(self, S, k, r, a, key):
+			p = int_to_hex(hex_to_int(int_to_hex(S[0])[:mod_in_hex]) ^ hex_to_int(c))
+			S[0] ^= hex_to_int(pad_hex(p + '80', 16, True))
+		if r == 128:
+			if mod_in_hex < 16:
+				Sr = hex_to_int(int_to_hex(S[0], 16)[:mod_in_hex])
+				p = int_to_hex(Sr ^ hex_to_int(c))
+				S[0] ^= hex_to_int(pad_hex(p + '80', 16, True))
+			elif mod_in_hex == 16:
+				p = int_to_hex(S[0] ^ hex_to_int(c))
+				print(p)
+				S[0] ^= hex_to_int(p)
+				S[1] ^= hex_to_int(pad_hex('80', 16, True))
+			else:
+				p = int_to_hex(S[0] ^ hex_to_int(c))
+				S[0] ^= hex_to_int(p)
+				c = ciphertext_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32]
+				tmp_p = int_to_hex(hex_to_int(int_to_hex(S[1])[:mod_in_hex - 16]) ^ hex_to_int(c))
+				S[1] ^= hex_to_int(pad_hex(tmp_p + '80', 16, True))
+				p += tmp_p
+		P.append(p)
+		if self._logging: print_info('Process ciphertext --> DONE')
+
+	def finalize_aead(self, S, k, r, a, key: bytes):
+		if self._logging: print_info('Finalize AEAD...')
 		# Prepare xor
 		padded_key_hex = '0' * int(r/4) + key.hex() + '0' * int((320-r-k)/4)
-		PADK = list( int(padded_key_hex[i * 16 : (i + 1) * 16], 16) for i in range(5) )
+		PADK = list( hex_to_int(padded_key_hex[i * 16 : (i + 1) * 16]) for i in range(5) )
 
 		# XOR
 		S = [S[i] ^ PADK[i] for i in range(5)]
 		self.permutation(S, a)
 
 		# Pad and split key
-		key_hex = key.hex().rjust(int(320 / 4), '0')
-		K = list( int(key_hex[i * 16 : (i + 1) * 16], 16) for i in range(5) )
-
+		key_hex = pad_hex(key.hex(), int(320 / 4))
+		K = list( hex_to_int(key_hex[i * 16 : (i + 1) * 16]) for i in range(5) )
+		
 		# Compute tag
+		if self._logging: print_info('Finalize AEAD --> DONE')
 		return [
-			hex(S[0] ^ K[0])[2:].rjust(16, '0'), 
-			hex(S[1] ^ K[1])[2:].rjust(16, '0')
+			pad_hex(int_to_hex(S[3] ^ K[3]), 16), 
+			pad_hex(int_to_hex(S[4] ^ K[4]), 16)
 		]
 
 	def permutation(self, S, number_of_rounds = 1):
 		assert(number_of_rounds > 0 and number_of_rounds <= 12)
-		if self._logging:
-			print_S('Permutation Input:', S)
-			print()
+		if self._logging: print_S('Permutation Input:', S)
 		for r in range(12 - number_of_rounds, 12):
-			if self._logging: print('Permutation Round', r + 1 - (12 - number_of_rounds))
+			# if self._logging: print('Permutation Round', r + 1 - (12 - number_of_rounds))
 			# Constants Addition Layer
 			S[2] ^= (0xf0 - r*0x10 + r*0x1)
-			if self._logging: print_S('Constants Addition Layer Result:', S)
+			# if self._logging: print_S('Constants Addition Layer Result:', S)
 			
 			# Substitution Layer
 			S[0] ^= S[4]
@@ -313,7 +380,7 @@ class Ascon:
 			S[0] ^= S[4]
 			S[3] ^= S[2]
 			S[2] ^= 0XFFFFFFFFFFFFFFFF
-			if self._logging: print_S('Substitution Layer Result:', S)
+			# if self._logging: print_S('Substitution Layer Result:', S)
 
 			# Linear Diffusion Layer
 			S[0] ^= rotr(S[0], 19) ^ rotr(S[0], 28)
@@ -321,14 +388,10 @@ class Ascon:
 			S[2] ^= rotr(S[2],  1) ^ rotr(S[2],  6)
 			S[3] ^= rotr(S[3], 10) ^ rotr(S[3], 17)
 			S[4] ^= rotr(S[4],  7) ^ rotr(S[4], 41)
-			if self._logging:
-				print_S('Linear Diffusion Layer Result:', S)
-				print()
-		if(self._logging):
-			print_S('Permutation Output', S)
-			print()
+			# if self._logging: print_S('Linear Diffusion Layer Result:', S)
+		if(self._logging): print_S('Permutation Output', S)
 
-ascon = Ascon(True)
+# ascon = Ascon(True)
 # print('Encryption result:', ascon.encrypt(
 # 	b'babecafebabecafe',
 # 	b'1234567812345678',
@@ -345,8 +408,8 @@ ascon = Ascon(True)
 # 	AEADVariants.ASCON_128
 # ))
 
-print('Hash result: ', ascon.hash(
-	b'Hello this is our prj ADL',
-	256,
-	HashVariants.ASCON_HASH
-))
+# print('Hash result: ', ascon.hash(
+# 	b'Hello this is our prj ADL',
+# 	250,
+# 	HashVariants.ASCON_HASH
+# ))
