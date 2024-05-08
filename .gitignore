@@ -3,3 +3,11 @@ __pycache__
 
 # Testbench output files
 testbench/*test*
+
+#Compiled files
+*.json 
+*.asc 
+*.bin 
+*.rpt 
+*.log
+*.blif
