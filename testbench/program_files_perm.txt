@@ -1,6 +1,0 @@
-../hdl/permutation/Permutation.v
-../hdl/permutation/ConstAddLayer.v
-../hdl/permutation/LinearLayer.v
-../hdl/permutation/SubLayer.v
-../hdl/RoundCounter.v
-tb_permutation.v

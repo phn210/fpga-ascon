@@ -4,8 +4,8 @@ ascon = Ascon()
 
 key = b'babecafebabecafe'
 nonce = b'1234567812345678'
-associated_data = b'this message comes from me'
-plaintext = b'bonjour cryptis adl bon'
+associated_data = b'adl projet'
+plaintext = b'bonjour cryptis m1'
 [ciphertext, tag] = ascon.encrypt(
 	key,
 	nonce,
