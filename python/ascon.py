@@ -1,15 +1,16 @@
+import math
 from enum import Enum
 from utils import *
 
 class AEADVariants(Enum):
 	ASCON_128 = 'Ascon-128'
-	ASCON_128A = 'Ascon-128a'
-	
+	ASCON_128A = 'Ascon-128a'	
 
 class HashVariants(Enum):
 	ASCON_HASH = 'Ascon-Hash'
 	ASCON_HASHA = 'Ascon-Hasha'
-
+	# ASCON_XOF = 'Ascon-Xof'
+	# ASCON_XOFA = 'Ascon-Xofa'
 class Ascon:
 	_logging: bool
 
@@ -33,7 +34,16 @@ class Ascon:
 		return [k, r, a, b]
 	
 	def get_hash_parameters(self, variant):
-		pass
+		h = 256
+		r = 64
+		a = 12
+		b = 0
+		if (variant is HashVariants.ASCON_HASH):
+			b = 12
+		elif (variant is HashVariants.ASCON_HASHA):
+			b = 8
+		assert b > 0 
+		return [h,r,a,b]
 
 	def encrypt(self, key: bytes, nonce: bytes, associated_data: bytes, plaintext: bytes, variant = AEADVariants.ASCON_128):
 		if self._logging:
@@ -117,8 +127,94 @@ class Ascon:
 
 		return [plaintext, isAuth]
 
-	def hash(self, message: bytes, variant = HashVariants.ASCON_HASH):
-		pass
+	def hash(self, message: bytes,l: int, variant = HashVariants.ASCON_HASH):
+		# Assign parameters
+		[h,r,a,b] = self.get_hash_parameters(variant)
+
+		# Initialization
+		S = [0,0,0,0,0]
+		self.initialize_hash(S,h,r,a,b)
+
+		# Absorbing message
+		self.absorb(S,r,b,message)
+
+		# Squeezing
+		H = []
+		self.squeeze(S,H,h,l,r,a,b)
+		hashValue = bytes.fromhex(''.join(H))
+
+		return hashValue
+	
+	def initialize_hash(self,S,h,r,a,b):
+		# Calculate IV
+		if self._logging: print_info('Initialize Hash...')
+
+		IV = pad_hex(
+				int_to_hex(r, 2) + 
+				int_to_hex(a, 2) + 
+				int_to_hex(a-b, 2) + 
+				int_to_hex(h, 8),
+				int(16),
+				False
+			)
+		if self._logging: print('IV:', IV)
+
+		# Assign initial state
+		S_hex = pad_hex(IV, int(80), True)
+		S = list( int(S_hex[i * 16 : (i + 1) * 16],16) for i in range(5) )
+		if self._logging: print('S:', S)
+
+		# Perform permutation
+		self.permutation(S, a)
+		if self._logging: print('S permuted:', S)
+		if self._logging: print_info('Initialize Hash --> DONE')
+
+	def absorb(self, S, r, b, message):
+		if self._logging: print_info('Absorbing...')
+
+		# Number of r-bit blocks of M || 1 || 0*
+		block_size_in_hex = int(r / 4)
+		message_hex = message.hex() + int_to_hex(128)
+
+		num_blocks = len(message_hex) // block_size_in_hex \
+					if len(message_hex) % block_size_in_hex == 0 \
+					else len(message_hex) // block_size_in_hex + 1
+		
+		# Pad message
+		padding_size = num_blocks * block_size_in_hex
+		message_hex = pad_hex(message_hex, padding_size, True)
+
+		# XOR and perform permutation
+		for i in range(num_blocks - 1):
+			m = message_hex[i * block_size_in_hex : i * block_size_in_hex + 16]
+			S[0] ^= hex_to_int(m)
+			self.permutation(S,b)
+		i = num_blocks - 1
+		S[0] ^= hex_to_int(m)
+		if self._logging: print_info('Absorb --> DONE')
+
+	def squeeze(self,S,H,h,l,r,a,b):
+		if self._logging: print_info('Squeezing...')
+		# Perform permutation 
+		self.permutation(S,a)
+
+		# Extracting hash output
+		if l <= h:
+			t = math.ceil(l/r)
+			for i in range(t):
+				H_i = int_to_hex(S[0],16)
+				# print ('hash: ',H_i)
+				self.permutation(S,b)
+				if i < t-1:
+					H.append(H_i)
+			mod_in_hex = l%r
+			print('l mod r:', mod_in_hex)
+			H_t = int_to_hex(S[0], 16)[:mod_in_hex]
+			H.append(H_t)
+		else:
+			if self._logging: print('Invalid output length!')
+
+		if self._logging: print_info('Squeeze --> DONE')
 
 	def initialize_aead(self, S, k, r, a, b, key: bytes, nonce):
 		# Calculate IV
@@ -153,7 +249,7 @@ class Ascon:
 		if self._logging: print('Process associated data...')
 		if len(associated_data) == 0:
 			return
-
+		
 		# Number of r-bit blocks of A || 1 || 0*
 		block_size_in_hex = int(r / 4)
 		associated_data_hex = associated_data.hex() + int_to_hex(128)
@@ -179,7 +275,6 @@ class Ascon:
 		# Number of r-bit blocks of P || 1 || 0*
 		block_size_in_hex = int(r / 4)
 		plaintext_hex = plaintext.hex() + int_to_hex(128)
-
 		num_blocks = len(plaintext_hex) // block_size_in_hex \
 					if len(plaintext_hex) % block_size_in_hex == 0 \
 					else len(plaintext_hex) // block_size_in_hex + 1
