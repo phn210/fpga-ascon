@@ -1,4 +1,4 @@
-GTK_ENABLED = 0
+GTK_ENABLED = 1
 # ARCH=hx8k
 # PACKAGE=tq144:4k
 # PCF=blackice-ii.pcf
@@ -94,6 +94,7 @@ decryption:
 
 hash:
 	@echo "Running Ascon hash test case..."
+	@python3 ./python/test_hash.py
 	@cd hdl/testbench && \
 	iverilog -o test_hash -c program_files_hash.txt && \
 	if [ "$(GTK_ENABLED)" = "1" ]; then \

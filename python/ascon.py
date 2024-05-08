@@ -47,7 +47,7 @@ class Ascon:
 
 	def encrypt(self, key: bytes, nonce: bytes, associated_data: bytes, plaintext: bytes, variant = AEADVariants.ASCON_128):
 		if self._logging:
-			print('INPUT:')
+			print('\nINPUT:')
 			print('  - Algo:', variant)
 			print('  - Key:', key.hex())
 			print('  - Nonce:', nonce.hex())
@@ -60,18 +60,26 @@ class Ascon:
 		assert len(key) == (k/8)
 		
 		# Initialization
+		if self._logging:
+			print('\nSTEP 1:')
 		S = [0, 0, 0, 0, 0]
-		self.initialize_aead(S, k, r, a, b, key, nonce)
+		S = self.initialize_aead(S, k, r, a, b, key, nonce)
 
 		# Process associated data
-		self.process_associated_data(S, r, b, associated_data)
+		if self._logging:
+			print('\nSTEP 2:')
+		S = self.process_associated_data(S, r, b, associated_data)
 
 		# Process plaintext
+		if self._logging:
+			print('\nSTEP 3:')
 		C = []
-		self.process_plaintext(S, C, r, b, plaintext)
+		S = self.process_plaintext(S, C, r, b, plaintext)
 		ciphertext = bytes.fromhex(''.join(C))
 		
 		# Finalization 
+		if self._logging:
+			print('\nSTEP 4:')
 		T = self.finalize_aead(S, k, r, a, key)
 		tag = bytes.fromhex(''.join(T))
 
@@ -79,7 +87,7 @@ class Ascon:
 		assert len(tag) == 16
 		
 		if self._logging:
-			print('OUTPUT:')
+			print('\nOUTPUT:')
 			print('  - Encrypted ciphertext:', ciphertext.hex())
 			print('  - Tag:', tag.hex())
 
@@ -87,7 +95,7 @@ class Ascon:
 		
 	def decrypt(self, key: bytes, nonce: bytes, associated_data: bytes, ciphertext: bytes, tag = bytes, variant = AEADVariants.ASCON_128):
 		if self._logging:
-			print('INPUT:')
+			print('\nINPUT:')
 			print('  - Algo:', variant)
 			print('  - Key:', key.hex())
 			print('  - Nonce:', nonce.hex())
@@ -101,19 +109,27 @@ class Ascon:
 		assert len(tag) == 16
 
 		# Initialization
+		if self._logging:
+			print('\nSTEP 1:')
 		S = [0, 0, 0, 0, 0]
-		self.initialize_aead(S, k, r, a, b, key, nonce)
-
+		S = self.initialize_aead(S, k, r, a, b, key, nonce)
+		
 		# Process associated data
-		self.process_associated_data(S, r, b, associated_data)
+		if self._logging:
+			print('\nSTEP 2:')
+		S = self.process_associated_data(S, r, b, associated_data)
 
 		# Process plaintext
+		if self._logging:
+			print('\nSTEP 3:')
 		P = []
-		self.process_ciphertext(S, P, r, b, ciphertext)
+		S = self.process_ciphertext(S, P, r, b, ciphertext)
 		# print(P)
 		plaintext = bytes.fromhex(''.join(P))
 		
 		# Finalization 
+		if self._logging:
+			print('\nSTEP 4:')
 		T = self.finalize_aead(S, k, r, a, key)
 		authTag = bytes.fromhex(''.join(T))
 		isAuth = (authTag == tag)
@@ -121,33 +137,53 @@ class Ascon:
 		assert len(plaintext) == len(ciphertext)
 		
 		if self._logging:
-			print('OUTPUT:')
+			print('\nOUTPUT:')
 			print('  - Decrypted plaintext:', plaintext.hex())
 			print('  - Tag:', tag.hex())
 
 		return [plaintext, isAuth]
 
-	def hash(self, message: bytes,l: int, variant = HashVariants.ASCON_HASH):
+	def hash(self, message: bytes, l: int, variant = HashVariants.ASCON_HASH):
+		if self._logging:
+			print('\nINPUT:')
+			print('  - Algo:', variant)
+			print('  - Digest length:', l, 'bits')
+			print('  - Message:', message.hex())
+
 		# Assign parameters
-		[h,r,a,b] = self.get_hash_parameters(variant)
+		if variant in [HashVariants.ASCON_HASH, HashVariants.ASCON_HASHA]:
+			assert l == 256
+		[h, r, a, b] = self.get_hash_parameters(variant)
 
 		# Initialization
-		S = [0,0,0,0,0]
-		self.initialize_hash(S,h,r,a,b)
+		if self._logging:
+			print('\nSTEP 1:')
+		S = [0, 0, 0, 0, 0]
+		S = self.initialize_hash(S, h, r, a, b)
 
 		# Absorbing message
-		self.absorb(S,r,b,message)
+		if self._logging:
+			print('\nSTEP 2:')
+		S = self.absorb(S, r, b, message)
 
 		# Squeezing
+		if self._logging:
+			print('\nSTEP 3:')
 		H = []
-		self.squeeze(S,H,h,l,r,a,b)
-		hashValue = bytes.fromhex(''.join(H))
+		self.squeeze(S, H, h, l, r, a, b)
+		digest = bytes.fromhex(''.join(H))
+		
+		assert len(digest)*8 == l
 
-		return hashValue
+		if self._logging:
+			print('\nOUTPUT:')
+			print('  - Hash digest:', digest.hex())
+
+		return digest
 	
-	def initialize_hash(self,S,h,r,a,b):
+	def initialize_hash(self, S, h, r, a, b):
 		# Calculate IV
-		if self._logging: print_info('Initialize Hash...')
+		if self._logging: print('Initialize Hash...')
 
 		IV = pad_hex(
 				int_to_hex(r, 2) + 
@@ -162,15 +198,17 @@ class Ascon:
 		# Assign initial state
 		S_hex = pad_hex(IV, int(80), True)
 		S = list( int(S_hex[i * 16 : (i + 1) * 16],16) for i in range(5) )
-		if self._logging: print('S:', S)
+		if self._logging: print_S('Initial state:', S)
 
 		# Perform permutation
 		self.permutation(S, a)
-		if self._logging: print('S permuted:', S)
-		if self._logging: print_info('Initialize Hash --> DONE')
+		if self._logging:
+			print_S('State:', S)
+			print('Initialize Hash --> DONE!')
+		return S
 
 	def absorb(self, S, r, b, message):
-		if self._logging: print_info('Absorbing...')
+		if self._logging: print('Absorbing...')
 
 		# Number of r-bit blocks of M || 1 || 0*
 		block_size_in_hex = int(r / 4)
@@ -188,33 +226,39 @@ class Ascon:
 		for i in range(num_blocks - 1):
 			m = message_hex[i * block_size_in_hex : i * block_size_in_hex + 16]
 			S[0] ^= hex_to_int(m)
-			self.permutation(S,b)
+			self.permutation(S, b)
 		i = num_blocks - 1
+		m = message_hex[i * block_size_in_hex : i * block_size_in_hex + 16]
 		S[0] ^= hex_to_int(m)
-		if self._logging: print_info('Absorb --> DONE')
 
-	def squeeze(self,S,H,h,l,r,a,b):
-		if self._logging: print_info('Squeezing...')
+		if self._logging:
+			print_S('State:', S)
+			print('Absorb --> DONE!')
+		return S
+
+	def squeeze(self, S, H, h, l, r, a, b):
+		if self._logging: print('Squeezing...')
 		# Perform permutation 
-		self.permutation(S,a)
+		self.permutation(S, a)
 
 		# Extracting hash output
 		if l <= h:
 			t = math.ceil(l/r)
 			for i in range(t):
-				H_i = int_to_hex(S[0],16)
-				# print ('hash: ',H_i)
-				self.permutation(S,b)
 				if i < t-1:
-					H.append(H_i)
-			mod_in_hex = l%r
-			print('l mod r:', mod_in_hex)
+					H.append(int_to_hex(S[0], 16))
+					self.permutation(S, b)
+			mod_in_hex = 16 if l%r == 0 else l%r
 			H_t = int_to_hex(S[0], 16)[:mod_in_hex]
 			H.append(H_t)
+			self.permutation(S, b)
 		else:
 			if self._logging: print('Invalid output length!')
 
-		if self._logging: print_info('Squeeze --> DONE')
+		if self._logging:
+			print_S('State:', S)
+			print('Squeeze --> DONE!')
+		return S
 
 	def initialize_aead(self, S, k, r, a, b, key: bytes, nonce):
 		# Calculate IV
@@ -231,8 +275,8 @@ class Ascon:
 
 		# Assign initial state
 		S_hex = IV + key.hex() + nonce.hex()
-		S = list( int(S_hex[i * 16 : (i + 1) * 16],16) for i in range(5) )
-		if self._logging: print_S('Initial S:', S)
+		S = list( int(S_hex[i * 16 : (i + 1) * 16], 16) for i in range(5) )
+		if self._logging: print_S('Initial state:', S)
 
 		# Perform permutation
 		self.permutation(S, a)
@@ -243,7 +287,10 @@ class Ascon:
 
 		# XOR initial state with secret key K
 		S = [S[i] ^ K[i] for i in range(5)]
-		if self._logging: print('Initialize AEAD --> DONE!')
+		if self._logging: 
+			print_S('State:', S)
+			print('Initialize AEAD --> DONE!')
+		return S
 
 	def process_associated_data(self, S, r, b, associated_data):
 		if self._logging: print('Process associated data...')
@@ -260,7 +307,7 @@ class Ascon:
 		# Pad associate data
 		padding_size = num_blocks * block_size_in_hex
 		associated_data_hex = pad_hex(associated_data_hex, padding_size, True)
-
+	
 		# XOR and perform permutation
 		for i in range(num_blocks):
 			S[0] ^= hex_to_int(associated_data_hex[i * block_size_in_hex : i * block_size_in_hex + 16])
@@ -268,7 +315,10 @@ class Ascon:
 				S[1] ^= hex_to_int(associated_data_hex[i * block_size_in_hex + 16 : i * block_size_in_hex + 32])
 			self.permutation(S, b)
 		S[4] ^= 1
-		if self._logging: print('Process associated data --> DONE!')
+		if self._logging: 
+			print_S('State:', S)
+			print('Process associated data --> DONE!')
+		return S
 
 	def process_plaintext(self, S, C, r, b, plaintext: bytes):
 		if self._logging: print('Process plaintext...')
@@ -308,6 +358,7 @@ class Ascon:
 			c = (int_to_hex(S[0], 16) + int_to_hex(S[1], 16))[:mod_in_hex]
 		C.append(c)
 		if self._logging: print('Process plaintext --> DONE!')
+		return S
 
 	def process_ciphertext(self, S, P, r, b, ciphertext):
 		if self._logging: print('Process ciphertext...')
@@ -359,6 +410,7 @@ class Ascon:
 				p += tmp_p
 		P.append(p)
 		if self._logging: print('Process ciphertext --> DONE!')
+		return S
 		
 	def finalize_aead(self, S, k, r, a, key: bytes):
 		if self._logging: print('Finalize AEAD...')
@@ -383,7 +435,7 @@ class Ascon:
 
 	def permutation(self, S, number_of_rounds = 1):
 		assert(number_of_rounds > 0 and number_of_rounds <= 12)
-		if self._logging: print_S('Permutation Input:', S)
+		# if self._logging: print_S('Permutation Input:', S)
 		for r in range(12 - number_of_rounds, 12):
 			# Constants Addition Layer
 			S[2] ^= (0xf0 - r*0x10 + r*0x1)
@@ -406,4 +458,4 @@ class Ascon:
 			S[2] ^= rotr(S[2],  1) ^ rotr(S[2],  6)
 			S[3] ^= rotr(S[3], 10) ^ rotr(S[3], 17)
 			S[4] ^= rotr(S[4],  7) ^ rotr(S[4], 41)
-		if(self._logging): print_S('Permutation Output:', S)
+		# if(self._logging): print_S('Permutation Output:', S)

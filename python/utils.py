@@ -17,5 +17,5 @@ def hex_to_int(hex: str):
 	return int(hex, 16)
 
 def print_S(text, S):
-	S = [hex(s).replace('0x','') for s in S]
+	S = [pad_hex(hex(s).replace('0x',''), 16) for s in S]
 	print(text, ''.join(S))
