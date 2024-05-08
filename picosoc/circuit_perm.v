@@ -54,7 +54,7 @@ module circuit_perm #(
 reg fini;
 reg [1:0] state;
 reg [1:0] state1;
-reg [31:0] lfsr;
+reg [31:0] data_out;
 reg [31:0] compteur;
 
 reg [31:0] perm_inp1;
@@ -69,7 +69,7 @@ reg [31:0] perm_inp9;
 reg [31:0] perm_inp10;
 
 assign reg_dat_wait = !fini;
-assign reg_dat_do = lfsr;
+assign reg_dat_do = data_out;
 
 assign reg_perm_do1 = perm_inp1;
 assign reg_perm_do2 = perm_inp2;
@@ -151,40 +151,6 @@ end
 assign S_in = {perm_inp1,perm_inp2,perm_inp3,perm_inp4,perm_inp5,perm_inp6,perm_inp7,perm_inp8,perm_inp9,perm_inp10};
 assign rounds = r;
 
-// always @(posedge clk) begin
-//   if (!resetn) begin
-//     fini <= 0;
-//     state <= 0;
-//     compteur <= 0;
-//     lfsr <= perm_inp1[31:0];
-//   end
-//   case(state)
-//     0: begin
-//       if (reg_dat_re) begin
-//         state <= 1;
-//         compteur <= 0;
-//         fini <= 0;
-//       end
-//     end 
-//     1: begin 
-//     compteur <= compteur + 1;
-//     // lfsr <= {lfsr[30:0],bit_lfsr};
-//     lfsr <= lfsr + 1;
-//     if (compteur == 1) begin 
-//       state <= 2;
-//     end
-//   end
-//   2: begin
-//     fini <= 1;
-//     state <= 0;
-//   end
-//   default: begin
-//     state <= 0;
-//     fini <= 1;
-//   end
-// endcase
-//     end
-
 //output
 always @(posedge clk) begin
   if (permutation_ready) begin
@@ -193,7 +159,7 @@ always @(posedge clk) begin
       state1 <= 0;
       compteur <= 0;
       permutation_out <= 0;
-      lfsr <= S_in[319:288];
+      data_out <= S_in[319:288];
     end
     case(state1)
       0: begin
@@ -205,7 +171,7 @@ always @(posedge clk) begin
       1: begin
         // if (permutation_ready) begin
           compteur <= compteur + 1;
-          lfsr <= S_in[319 - (compteur * 32) : 288 - (compteur * 32)];
+          data_out <= S_in[319 - (compteur * 32) : 288 - (compteur * 32)];
           state1 <= 0;
           fini <= 1;
           if (compteur == 9) begin
@@ -309,37 +275,6 @@ RoundCounter rc(
   .permutation_ready(permutation_ready),
   .counter(ctr)
 );
-
-// always @(posedge clk) begin
-//   if (permutation_start) begin
-//     if (!resetn) begin
-//       fini <= 0;
-//       state1 <= 0;
-//       compteur <= 0;
-//       lfsr <= ctr;
-//     end
-//     case(state1)
-//       0: begin
-//         if (reg_dat_re) begin
-//           state1 <= 1;
-//           fini <= 0;
-//         end
-//       end 
-//       1: begin
-//         // if (permutation_ready) begin
-//           compteur <= compteur + 1;
-//           lfsr <= ctr;
-//           state1 <= 0;
-//           fini <= 1;
-//         // end
-//       end
-//       default: begin
-//         state1 <= 0;
-//         fini <= 1;
-//       end
-//     endcase
-//   end
-// end
 
 // Debugger
     // always @(posedge clk or posedge resetn) begin
