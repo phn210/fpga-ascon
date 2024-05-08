@@ -18,7 +18,6 @@ module Decryption #(
     output [127:0]  tag,
     output          decryption_ready
 );
-
     // Constants
     parameter c = 320-r;
 
@@ -49,7 +48,7 @@ module Decryption #(
     reg  [Y-1:0]        P_d;
     reg  [t:0]          block_ctr;
     wire [4:0]          ctr;
-    reg [2:0] state;
+    reg [2:0]           state;
 
     assign IV = k << 24 | r << 16 | a << 8 | b;
     assign {Sr,Sc} = S;
@@ -67,7 +66,7 @@ module Decryption #(
               INITIALIZE        = 'd1,
               ASSOCIATED_DATA   = 'd2,
               CTPT              = 'd3,
-              FINALIZE          = 'd4, 
+              FINALIZE          = 'd4,
               DONE              = 'd5;
 
     // Sequential block

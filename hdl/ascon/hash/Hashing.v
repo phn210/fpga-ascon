@@ -4,23 +4,21 @@ module Hashing #(
     parameter b = 12,
     parameter h = 256,
     parameter l = 256,
-    parameter y = 32,
+    parameter y = 40
 )(
     input       clk,
     input       rst,
-    input [2:0] messagexSI,
+    input       messagexSI,
     input       startxSI,
-    input [6:0] r_64xSI,
-    input       r_faultxSI,
 
-    output reg  hash_textxSO,
-    output      readyxSO
+    output reg  hash_digestxSO,
+    output      hash_readyxSO
 );
 
     reg     [y-1:0]     message;
     reg     [31:0]      i,j;
-    wire    [l-1:0]     hash_text;
-    wire                ready_1, ready, start;
+    wire    [l-1:0]     hash_digest;
+    wire                ready, hash_ready, start;
     wire                permutation_ready, permutation_start;
 
     // Left shift for Inputs
@@ -30,24 +28,24 @@ module Hashing #(
 
         else begin
             if(i < y) begin
-                message <= {message[y-2:0], messagexSI[0]};
+                message <= {message[y-2:0], messagexSI};
             end
 
             i <= i+1;
         end
 
         // Right Shift for encryption outputs
-        if(ready) begin
+        if(hash_ready) begin
             if(j < l)
-                hash_textxSO <= hash_text[j];
+                hash_digestxSO <= hash_digest[j];
 
             j <= j + 1;
         end
     end
 
-    assign ready_1 = ((i>y) && (i>l) && (i>64))? 1 : 0;
-    assign start = ready_1 & startxSI;
-    assign readyxSO = ready;
+    assign ready = ((i>y) && (i>l) && (i>64))? 1 : 0;
+    assign start = ready & startxSI;
+    assign hash_readyxSO = hash_ready;
 
     Hash #(
         r,a,b,h,l,y
@@ -56,7 +54,7 @@ module Hashing #(
         rst,
         message,
         start,
-        ready,
-        hash_text
+        hash_ready,
+        hash_digest
     );
 endmodule

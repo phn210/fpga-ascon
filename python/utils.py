@@ -1,5 +1,3 @@
-from colorama import Fore, Back, Style
-
 def rotr(val, r):
 	return (val >> r) | ((val & (1<<r)-1) << (64-r))
 
@@ -21,6 +19,3 @@ def hex_to_int(hex: str):
 def print_S(text, S):
 	S = [hex(s).replace('0x','') for s in S]
 	print(text, ''.join(S))
-
-def print_info(text):
-	print(Fore.GREEN + text + Style.RESET_ALL)

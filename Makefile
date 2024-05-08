@@ -48,7 +48,7 @@ clean:
 
 permutation:
 	@echo "Running permutation test case..."
-	# @python3 ./python/test_permutation.py
+	@python3 ./python/test_permutation.py
 	@cd hdl/testbench && \
 	iverilog -o test_permutation -c program_files_perm.txt && \
 	if [ "$(GTK_ENABLED)" = "1" ]; then \
@@ -60,6 +60,7 @@ permutation:
 
 aead:
 	@echo "Running Ascon AEAD (encryption & decryption) test case..."
+	@python3 ./python/test_aead.py
 	@cd hdl/testbench && \
 	iverilog -o test_aead -c program_files_aead.txt && \
 	if [ "$(GTK_ENABLED)" = "1" ]; then \
@@ -67,5 +68,38 @@ aead:
 		gtkwave test_aead.vcd; \
 	else \
 		./test_aead >> out/output_test_aead.txt; \
+	fi
+
+encryption:
+	@echo "Running Ascon AEAD encryption test case..."
+	@cd hdl/testbench && \
+	iverilog -o test_enc -c program_files_enc.txt && \
+	if [ "$(GTK_ENABLED)" = "1" ]; then \
+		./test_enc >> out/output_test_enc.txt; \
+		gtkwave test_enc.vcd; \
+	else \
+		./test_enc >> out/output_test_enc.txt; \
+	fi
+
+decryption:
+	@echo "Running Ascon AEAD decryption test case..."
+	@cd hdl/testbench && \
+	iverilog -o test_dec -c program_files_dec.txt && \
+	if [ "$(GTK_ENABLED)" = "1" ]; then \
+		./test_dec >> out/output_test_dec.txt; \
+		gtkwave test_dec.vcd; \
+	else \
+		./test_dec >> out/output_test_dec.txt; \
+	fi
+
+hash:
+	@echo "Running Ascon hash test case..."
+	@cd hdl/testbench && \
+	iverilog -o test_hash -c program_files_hash.txt && \
+	if [ "$(GTK_ENABLED)" = "1" ]; then \
+		./test_hash >> out/output_test_hash.txt; \
+		gtkwave test_hash.vcd; \
+	else \
+		./test_hash >> out/output_test_hash.txt; \
 	fi
 	

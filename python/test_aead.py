@@ -1,7 +1,8 @@
 from ascon import Ascon, AEADVariants
 
-ascon = Ascon()
+ascon = Ascon(True)
 
+variant = AEADVariants.ASCON_128
 key = b'babecafebabecafe'
 nonce = b'1234567812345678'
 associated_data = b'adl projet'
@@ -11,7 +12,7 @@ plaintext = b'bonjour cryptis m1'
 	nonce,
 	associated_data,
 	plaintext,
-	AEADVariants.ASCON_128
+	variant
 )
 [decryption, isAuth] = ascon.decrypt(
 	key,
@@ -19,25 +20,7 @@ plaintext = b'bonjour cryptis m1'
 	associated_data,
 	ciphertext,
 	tag,
-	AEADVariants.ASCON_128
+	variant
 )
 print('Encryption verification:', plaintext == decryption)
 print('Tag verification:', isAuth)
-[ciphertext, tag] = ascon.encrypt(
-	key,
-	nonce,
-	associated_data,
-	plaintext,
-	AEADVariants.ASCON_128A
-)
-[decryption, isAuth] = ascon.decrypt(
-	key,
-	nonce,
-	associated_data,
-	ciphertext,
-	tag,
-	AEADVariants.ASCON_128A
-)
-print('Encryption verification:', plaintext == decryption)
-print('Tag verification:', isAuth)
-	

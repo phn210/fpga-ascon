@@ -3,16 +3,16 @@ module AEADTB;
     parameter period = 20;
     parameter max_input_len = (`k>=`y && `k>=`l)? `k: ((`y>=`l)? `y: `l);
 
-    reg				clk = 0;
-	reg 			rst;
-    reg [4:0]       keyxSI;
-    reg [4:0]       noncexSI;
-    reg [4:0]       associated_dataxSI;
-    reg [4:0]       plain_textxSI;
+    reg             clk = 0;
+	reg             rst;
+    reg             keyxSI;
+    reg             noncexSI;
+    reg             associated_dataxSI;
+    reg             plain_textxSI;
     reg             encryption_startxSI;
     reg             decryption_startxSI = 0;
-    reg [2:0]       r_128xSI;
-    reg [2:0]       r_ptxSI;
+    reg             r_128xSI;
+    reg             r_ptxSI;
     integer         ctr = 0;
     reg [`y-1:0]    cipher_text, plain_text;
     reg [127:0]     tag, dec_tag;
@@ -53,11 +53,11 @@ module AEADTB;
     input [max_input_len-1:0] rd, i, key, nonce, ass_data, pt; 
     begin
         @(posedge clk);
-        {r_128xSI, r_ptxSI, keyxSI[4:1], associated_dataxSI[4:1], plain_textxSI[4:1], noncexSI[4:1]} = rd;
-        keyxSI[0] = key[`k-1-i];
-        noncexSI[0] = nonce[127-i];
-        plain_textxSI[0] = pt[`y-1-i];
-        associated_dataxSI[0] = ass_data[`l-1-i];
+        {r_128xSI, r_ptxSI} = rd;
+        keyxSI = key[`k-1-i];
+        noncexSI = nonce[127-i];
+        plain_textxSI = pt[`y-1-i];
+        associated_dataxSI = ass_data[`l-1-i];
     end
     endtask
 
@@ -104,11 +104,10 @@ module AEADTB;
     end
 
     always @(*) begin
-
-        if(encryption_readyxSO && flag == 0) begin
+        if(encryption_readyxSO & flag == 0) begin
             flag = 1;
             check_time = $time - check_time;
-            $display("Encryption done! It took%d clk cycles", check_time/(2*period));
+            $display("Encryption done! It took%4d clk cycles", check_time/(2*period));
             #(4*period)
             repeat(max_input_len) begin
                 read(ctr);
@@ -125,7 +124,7 @@ module AEADTB;
 
         if (decryption_readyxSO) begin
             check_time = $time - check_time;
-            $display("Decryption done! It took%d clk cycles", check_time/(2*period));
+            $display("Decryption done! It took%4d clk cycles", check_time/(2*period));
             #(4*period)
             repeat(max_input_len) begin
                 read_dec(ctr);
@@ -133,7 +132,7 @@ module AEADTB;
             end
             $display("PT:\t%h", plain_text);
             $display("Tag:\t%h", dec_tag);
-            $display("Is message authenticated:\t%b", message_authentication);
+            $display("Is message authenticated:%s", message_authentication ? "True" : "False");
             $finish;
         end
     end

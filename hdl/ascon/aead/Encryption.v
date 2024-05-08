@@ -18,7 +18,6 @@ module Encryption #(
     output [127:0]  tag,
     output          encryption_ready 
 );
-
     // Constants
     parameter c = 320-r;
 
@@ -47,9 +46,9 @@ module Encryption #(
     wire [Y-1:0]        P;
     reg  [Y-1:0]        C;
     reg  [Y-1:0]        C_d;
-    reg  [t:0]          block_ctr;  
+    reg  [t:0]          block_ctr;
     wire [4:0]          ctr;
-    reg [2:0] state;
+    reg  [2:0]          state;
 
     assign IV = k << 24 | r << 16 | a << 8 | b;
     assign {Sr,Sc} = S;
@@ -61,7 +60,6 @@ module Encryption #(
         assign cipher_text = (encryption_ready_1)? C[Y-1 : Y-y] : 0;
     else
         assign cipher_text = 0;
-    assign state_1 = state;
 
     // States
     parameter IDLE              = 'd0,

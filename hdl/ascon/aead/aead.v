@@ -3,19 +3,19 @@ module AEAD #(
     parameter r = 64,            // Rate
     parameter a = 12,             // Initialization round no.
     parameter b = 6,              // Intermediate round no.
-    parameter l = 32,            // Length of associated data
-    parameter y = 32             // Length of Plain Text
+    parameter l = 40,            // Length of associated data
+    parameter y = 40             // Length of Plain Text
 )(
-    input           clk,
-    input           rst,
-    input [4:0]     keyxSI,
-    input [4:0]     noncexSI,
-    input [4:0]     associated_dataxSI,
-    input [4:0]     plain_textxSI,
-    input           encryption_startxSI,
-    input           decryption_startxSI,
-    input [2:0]     r_128xSI,
-    input [2:0]     r_ptxSI,
+    input       clk,
+    input       rst,
+    input       keyxSI,
+    input       noncexSI,
+    input       associated_dataxSI,
+    input       plain_textxSI,
+    input       encryption_startxSI,
+    input       decryption_startxSI,
+    input       r_128xSI,
+    input       r_ptxSI,
 
     output reg  cipher_textxSO,
     output reg  plain_textxSO,
@@ -31,11 +31,13 @@ module AEAD #(
     reg     [y-1:0]     plain_text;
     reg     [127:0]     random_dec_1;
     reg     [y-1:0]     random_dec_2;
-    reg     [31:0]      i, j, m;            // Counter registers
+    reg     [31:0]      i, j, m;
     wire    [y-1:0]     dec_plain_text;
     wire    [y-1:0]     cipher_text;
     wire    [127:0]     tag, dec_tag;
-    wire                ready, encryption_start;
+    wire                ready, 
+                        encryption_start, encryption_ready,
+                        decryption_start, decryption_ready;
     wire                permutation_ready, permutation_start;
 
     // Left shift for Inputs
@@ -45,21 +47,21 @@ module AEAD #(
 
         else begin
             if(i < k) begin
-                key <= {key[k-2:0], keyxSI[0]}; 
+                key <= {key[k-2:0], keyxSI}; 
             end
 
             if(i < 128) begin
-                nonce <= {nonce[126:0], noncexSI[0]};
-                random_dec_1 <= {random_dec_1[126:0], r_128xSI[2]};
+                nonce <= {nonce[126:0], noncexSI};
+                random_dec_1 <= {random_dec_1[126:0], r_128xSI};
             end
 
             if(i < l) begin
-                associated_data <= {associated_data[l-2:0], associated_dataxSI[0]};
+                associated_data <= {associated_data[l-2:0], associated_dataxSI};
             end
 
             if(i < y) begin
-                plain_text <= {plain_text[y-2:0], plain_textxSI[0]};
-                random_dec_2 <= {random_dec_2[y-2:0], r_ptxSI[2]};
+                plain_text <= {plain_text[y-2:0], plain_textxSI};
+                random_dec_2 <= {random_dec_2[y-2:0], r_ptxSI};
             end
             
             i <= i+1;
@@ -102,9 +104,12 @@ module AEAD #(
 
     assign ready = ((i>k) && (i>128) && (i>l) && (i>y))? 1 : 0;
     assign encryption_start = ready & encryption_startxSI;
+    assign decryption_start = ready & decryption_startxSI;
 
     assign encryption_readyxSO = encryption_ready;
     assign decryption_readyxSO = decryption_ready;
+
+    assign message_authentication = (decryption_ready)? (dec_tag == tag): 0;
     
     Encryption #(
         k,r,a,b,l,y
@@ -136,6 +141,4 @@ module AEAD #(
         decryption_ready        
     );
     
-
-    assign message_authentication = (decryption_ready)? (dec_tag == tag): 0;
 endmodule

@@ -1,5 +1,4 @@
-../ascon/aead/AEAD.v
-../ascon/aead/Decryption.v
+../ascon/aead/AEADEncryption.v
 ../ascon/aead/Encryption.v
 ../ascon/permutation/Permutation.v
 ../ascon/permutation/ConstAddLayer.v
@@ -7,4 +6,4 @@
 ../ascon/permutation/SubLayer.v
 ../ascon/RoundCounter.v
 parameters_aead.v
-tb_aead.v
+tb_enc.v
