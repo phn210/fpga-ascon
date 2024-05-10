@@ -10,7 +10,7 @@
 // Les differents peripheriques presents sur le SoC
 #define reg_uart_clkdiv (*(volatile uint32_t*)0x02000004)
 #define reg_uart_data (*(volatile uint32_t*)0x02000008)
-#define reg_circuit_seed (*(volatile uint32_t*)0x02000018)
+// #define reg_circuit_seed (*(volatile uint32_t*)0x02000018)
 #define reg_circuit_data (*(volatile uint32_t*)0x0200000c)
 #define reg_leds (*(volatile uint32_t*)0x03000000)
 
@@ -25,6 +25,20 @@
 #define reg_circut_perm9 (*(volatile uint32_t*)0x02000050)
 #define reg_circut_perm10 (*(volatile uint32_t*)0x02000058)
 
+char wait(int cycle)
+{
+	uint32_t cycles_begin, cycles_now, cycles;
+	__asm__ volatile ("rdcycle %0" : "=r"(cycles_begin));
+
+	while (1) {
+		__asm__ volatile ("rdcycle %0" : "=r"(cycles_now));
+		cycles = cycles_now - cycles_begin;
+		if (cycles > cycle) {
+			return;
+		}
+	}
+}
+
 int main(void)
 {
   _picorv32_setmask(0);
@@ -35,12 +49,12 @@ int main(void)
     for(;;)
     {
       reg_leds = 0xff;
-      print("Seed123123: ");
-      print_hex(reg_circuit_seed,8);
-      print("\n");
+      // print("Seed123123: ");
+      // print_hex(reg_circuit_seed,8);
+      // print("\n");
       // reg_circuit_seed = 0xbabecafe;
       //["0xB1052995B8707739", "0xD6D42CBB78BB010A", "0xF1C1629EC1FF700B", "0xDA64243D428EB536", "0xDB31C36D4DE2971E"]
-      reg_circuit_seed = 0x00000010;
+      // reg_circuit_seed = 0x00000010;
 
       reg_circut_perm1 = 0xb1052995;
       reg_circut_perm2 = 0xb8707739;
@@ -52,9 +66,13 @@ int main(void)
       reg_circut_perm8 = 0x428eb536;
       reg_circut_perm9 = 0xdb31c36d;
       reg_circut_perm10 = 0x4de2971e;
+      // reg_circuit_start = 0x00000001;
+      print("Output: ");
+      print_hex(reg_circuit_data,8);
+      // reg_circuit_start = 0x00000000;
 
-      print("Seed: ");
-      print_hex(reg_circuit_seed,8);
+      // print("Seed: ");
+      // print_hex(reg_circuit_seed,8);
       print("\n");
       print("Perm1: ");
       print_hex(reg_circut_perm1,8);
@@ -67,6 +85,7 @@ int main(void)
         print("Valeur: ");
         print_hex(reg_circuit_data,8);
         print("\n");
+        wait(120000000);
       }
       print("Hello World!\n");
       do{

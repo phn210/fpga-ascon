@@ -121,7 +121,7 @@ pll mon_horloge(
 	);
     reg [7:0] afficheur = 8'h 4f;
     reg [23:0] compteur = 0;
-    afficheur_hexa afh (.clk(clk), .resetn(resetn), .value(afficheur),.pmod(pmod_hex));
+    // afficheur_hexa afh (.clk(clk), .resetn(resetn), .value(afficheur),.pmod(pmod_hex));
 
     always @(posedge clock_out) begin
       compteur <= compteur + 1;

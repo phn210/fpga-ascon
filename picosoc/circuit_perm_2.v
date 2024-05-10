@@ -45,6 +45,9 @@ module circuit_perm #(
   input [31:0]  reg_perm_di10,
   output [31:0] reg_perm_do10,
 
+  input         reg_start_we,
+  input         reg_start_di,
+
   input         reg_dat_we,
   input         reg_dat_re,
   input  [31:0] reg_dat_di,
@@ -89,7 +92,6 @@ reg permutation_start;
 wire permutation_ready;
 reg permutation_out;
 reg [4:0] rounds;
-
 
 always @(posedge clk) begin
   if (!resetn) begin
@@ -141,11 +143,10 @@ always @(posedge clk) begin
     if (reg_perm_we9[2]) perm_inp9[23:16] <= reg_perm_di9[23:16];
     if (reg_perm_we9[3]) perm_inp9[31:24] <= reg_perm_di9[31:24];
     
-    // if (reg_perm_we10[0]) perm_inp10[ 7: 0] <= reg_perm_di10[ 7: 0];
-    // if (reg_perm_we10[1]) perm_inp10[15: 8] <= reg_perm_di10[15: 8];
-    // if (reg_perm_we10[2]) perm_inp10[23:16] <= reg_perm_di10[23:16];
-    // if (reg_perm_we10[3]) perm_inp10[31:24] <= reg_perm_di10[31:24];
-    perm_inp10[ 31: 0] <= 0;
+    if (reg_perm_we10[0]) perm_inp10[ 7: 0] <= reg_perm_di10[ 7: 0];
+    if (reg_perm_we10[1]) perm_inp10[15: 8] <= reg_perm_di10[15: 8];
+    if (reg_perm_we10[2]) perm_inp10[23:16] <= reg_perm_di10[23:16];
+    if (reg_perm_we10[3]) perm_inp10[31:24] <= reg_perm_di10[31:24];
   end
 end
 
@@ -154,88 +155,84 @@ assign rounds = r;
 
 //output
 always @(posedge clk) begin
-  if (permutation_ready) begin
-    if (!resetn) begin
-      fini <= 0;
-      state1 <= 0;
-      // compteur <= 0;
-      // data_out <= S_in[319:288];
-    end
-    case(state1)
-      0: begin
-        if (reg_dat_re) begin
-          state1 <= 1;
-          fini <= 0;
-        end
-      end 
-      1: begin
-        // if (permutation_ready) begin
-          compteur <= compteur + 1;
-          data_out <= S_out[319 - (compteur * 32) : 288 - (compteur * 32)];
+  if (!resetn) begin
+    fini <= 0;
+    state1 <= 0;
+    compteur <= 0;
+    permutation_out <= 0;
+  end
+  case(state1)
+    0: begin
+      if (reg_dat_re) begin
+        state1 <= 1;
+        fini <= 0;
+      end
+    end 
+    1: begin
+      if (permutation_ready) begin
+        compteur <= compteur + 1;
+        data_out <= S_in[319 - (compteur * 32) : 288 - (compteur * 32)];
+        state1 <= 0;
+        fini <= 1;
+        if (compteur == 9) begin
           state1 <= 2;
-          // fini <= 1;
-          // if (compteur == 9) begin
-          //   state1 <= 2;
-          // end
-        // end
-      end
-      // 2: begin
-      //   fini <= 1;
-      //   permutation_out <= 1;
-      //   state1 <= 0;
-      // end
-      // default: begin
-      //   state1 <= 0;
-      //   fini <= 1;
-      // end
-      2: begin
-          fini <= 1;
-          state1 <= 0;
-      end
-      default: begin
+        end
+      end else begin
+        data_out <= 0;
         state1 <= 0;
         fini <= 1;
       end
-    endcase
-  end
+    end
+    2: begin
+      fini <= 1;
+      permutation_out <= 1;
+      state1 <= 0;
+    end
+    default: begin
+      state1 <= 0;
+      fini <= 1;
+    end
+  endcase
 end
 
-always @(posedge clk) begin
-  if(resetn) begin
-      state <= 0;
-  end
-  // begin
-    case(state)
-      // IDLE Stage
-      0: begin
-        permutation_start <= 1;
-        state <= 1;
-      end
-      // Initialization
-      1: begin
-        if(permutation_ready) begin
-          permutation_start <= 0;
-        end
-      end
-      // Finalization
-      // 2: begin
-      //   if (permutation_ready) begin
-      //     // permutation_ready <= 0;
-      //     state <= 3;
-      //   end
-      // end
-      // // Done Stage
-      // 3: begin
-      //   permutation_start <= 0;
-      //   // permutation_ready <= 0;
-      //   // state <= 0;
-      // end
-      // // Invalid state? go to idle
-      default: 
-        state <= 0;
-    endcase
-  // end
-end
+
+// always @(posedge clk) begin
+//   if(resetn) begin
+//       state <= 0;
+//   end
+//   // begin
+//     case(state)
+//       // IDLE Stage
+//       0: begin
+//         permutation_start <= 1;
+//         state <= 1;
+//       end
+//       // Initialization
+//       1: begin
+//         if(permutation_start) begin
+//           // permutation_ready <= 1;
+//           state <= 2;
+//         end
+//       end
+//       // Finalization
+//       2: begin
+//         if (permutation_out) begin
+//           // permutation_ready <= 0;
+//           state <= 3;
+//         end
+//       end
+//       // Done Stage
+//       3: begin
+//         permutation_start <= 0;
+//         // permutation_ready <= 0;
+//         state <= 0;
+//       end
+//       // Invalid state? go to idle
+//       default: 
+//         state <= 0;
+//     endcase
+//   // end
+// end
 
 //Combinational Block
 // always @(*) begin
@@ -266,7 +263,7 @@ end
 
 Permutation p(
   .clk(clk),
-  .rst(!resetn),
+  .rst(resetn),
   .ctr(ctr),
   .S(S_in),
   .rounds(rounds),
@@ -277,7 +274,7 @@ Permutation p(
 
 RoundCounter rc(
   .clk(clk),
-  .rst(!resetn),
+  .rst(resetn),
   .permutation_start(permutation_start),
   .permutation_ready(permutation_ready),
   .counter(ctr)

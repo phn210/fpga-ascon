@@ -44,7 +44,8 @@ module PermutationTB();
 		resetn = 1;
 		#10 
 		resetn = 0;
-		S_in = 'hb1052995b8707739d6d42cbb78bb010af1c1629ec1ff700bda64243d428eb536db31c36d4de2971e;
+		// S_in = 'hb1052995b8707739d6d42cbb78bb010af1c1629ec1ff700bda64243d428eb536db31c36d4de2971e;
+		S_in = 'hb1052995b8707739d6d42cbb78bb010af1c1629ec1ff700bda64243d428eb536db31c36d00000000;
 		rounds = 12;
 		$display("Permutation Input:\t%h", S_in);
 		$display("Number of rounds:\t%d", rounds);
