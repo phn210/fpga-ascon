@@ -30,7 +30,7 @@ module AEADEncryption #(
 
     // Left shift for Inputs
     always @(posedge clk) begin
-        if(rst)
+        if(!rst)
             {key, nonce, associated_data, plain_text, i, j} <= 0;
 
         else begin

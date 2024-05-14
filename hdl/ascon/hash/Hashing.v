@@ -23,7 +23,7 @@ module Hashing #(
 
     // Left shift for Inputs
     always @(posedge clk) begin
-        if(rst)
+        if(!rst)
             {message, i, j} <= 0;
 
         else begin

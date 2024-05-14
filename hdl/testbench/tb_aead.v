@@ -83,9 +83,9 @@ module AEADTB;
         $dumpfile("test_aead.vcd");
         $dumpvars;
         $display("Start!");
-		rst = 1;
+		rst = 0;
 		#(1.5*period)
-        rst = 0;
+        rst = 1;
         ctr = 0;
         repeat(max_input_len) begin
             write({$random, $random}, ctr, `KEY, `NONCE, `AD, `PT);

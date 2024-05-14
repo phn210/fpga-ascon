@@ -52,7 +52,7 @@ module Hash #(
               DONE          = 'd4;
 
     always @(posedge clk) begin
-        if(rst) begin
+        if(!rst) begin
             state <= IDLE;
             S <= 0;
             ready_1 <= 0;

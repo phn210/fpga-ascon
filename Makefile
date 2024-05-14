@@ -1,44 +1,49 @@
-GTK_ENABLED = 1
-# ARCH=hx8k
-# PACKAGE=tq144:4k
-# PCF=blackice-ii.pcf
-# PORT=ttyACM0
-# VERILOG_SRC=./hdl/ascon/permutation/Permutation.v \
-# 			./hdl/ascon/permutation/ConstAddLayer.v \
-# 			./hdl/ascon/permutation/LinearLayer.v \
-# 			./hdl/ascon/permutation/SubLayer.v \
-# 			./hdl/ascon/RoundCounter.v \
-# 			./hdl/afficheur_hexa.v \
-# 			./hdl/sync_reset.v \
-# 			./hdl/pll.v \
-# 			./hdl/icebreaker.v \
-# 			./hdl/simpleuart.v \
-# 			./hdl/hex_converter.v \
-# 			./hdl/circuit.v \
-# 			./hdl/load_firmware.v \
-# 			./hdl/picosoc.v \
-# 			./hdl/picorv32.v
+GTK_ENABLED = 0
+ARCH=hx8k
+PACKAGE=tq144:4k
+PCF=blackice-ii.pcf
+PORT=ttyACM0
+LDFLAGS="-L/opt/homebrew/opt/icu4c/lib"
+VERILOG_SRC=./hdl/ascon/aead/AEAD.v \
+			./hdl/ascon/aead/Encryption.v \
+			./hdl/ascon/aead/Decryption.v \
+			./hdl/ascon/hash/Hash.v \
+			./hdl/ascon/hash/Hashing.v \
+			./hdl/ascon/permutation/ConstAddLayer.v \
+			./hdl/ascon/permutation/LinearLayer.v \
+			./hdl/ascon/permutation/SubLayer.v \
+			./hdl/ascon/permutation/Permutation.v \
+			./hdl/ascon/RoundCounter.v \
+			./hdl/afficheur_hexa.v \
+			./hdl/sync_reset.v \
+			./hdl/pll.v \
+			./hdl/icebreaker.v \
+			./hdl/simpleuart.v \
+			./hdl/hex_converter.v \
+			./hdl/load_firmware.v \
+			./hdl/picosoc.v \
+			./hdl/picorv32.v
 
-# all: icebreaker.bin
+all: icebreaker.bin
 
-# icebreaker.json: $(VERILOG_SRC) 
-# 	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -json icebreaker.json -blif icebreaker.blif' $^
+icebreaker.json: $(VERILOG_SRC) 
+	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -json icebreaker.json -blif icebreaker.blif' $^
 
-# show: icebreaker.json
-# 	nextpnr-ice40 --gui --freq 16 --$(ARCH) --package $(PACKAGE) --pcf $(PCF) --json icebreaker.json
+show: icebreaker.json
+	nextpnr-ice40 --gui --freq 16 --$(ARCH) --package $(PACKAGE) --pcf $(PCF) --json icebreaker.json
 
-# icebreaker.asc: icebreaker.pcf icebreaker.json
-# 	nextpnr-ice40 --freq 16 --$(ARCH) --package $(PACKAGE) --asc icebreaker.asc --pcf $(PCF) --json icebreaker.json
+icebreaker.asc: icebreaker.pcf icebreaker.json
+	nextpnr-ice40 --freq 16 --$(ARCH) --package $(PACKAGE) --asc icebreaker.asc --pcf $(PCF) --json icebreaker.json
 
-# icebreaker.bin: icebreaker.asc
-# 	icetime -d $(ARCH) -c 16 -mtr icebreaker.rpt icebreaker.asc
-# 	icepack icebreaker.asc icebreaker.bin
+icebreaker.bin: icebreaker.asc
+	icetime -d $(ARCH) -c 16 -mtr icebreaker.rpt icebreaker.asc
+	icepack icebreaker.asc icebreaker.bin
 
-# pll.v:
-# 	icepll -i $(INPUT_FREQ) -o $(OUTPUT_FREQ) -m -f $@
+pll.v:
+	icepll -i $(INPUT_FREQ) -o $(OUTPUT_FREQ) -m -f $@
 
-# iceprog: icebreaker.bin
-# 	stty -f /dev/cu.usbmodem00000000001A1 raw 115200; cat icebreaker.bin >/dev/cu.usbmodem00000000001A1
+iceprog: icebreaker.bin
+	stty -f /dev/cu.usbmodem00000000001A1 raw 115200; cat icebreaker.bin >/dev/cu.usbmodem00000000001A1
 
 clean:
 	@echo "Removing all test files..."

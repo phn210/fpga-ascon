@@ -71,7 +71,7 @@ module Decryption #(
 
     // Sequential block
     always @(posedge clk) begin
-        if(rst) begin
+        if(!rst) begin
             state <= IDLE;
             S <= 0;
             Tag <= 0;

@@ -48,9 +48,9 @@ module HashTB;
         $dumpfile("test_hash.vcd");
         $dumpvars;
         $display("Start!");
-        rst = 1;
-        #(2*period)
         rst = 0;
+        #(2*period)
+        rst = 1;
         ctr = 0;
         repeat(max_input_len) begin
             write(ctr, `MESSAGE);

@@ -23,7 +23,7 @@ module Permutation (
 
     // Updating the registers with clock cycles
     always @(posedge clk) begin
-        if(rst)
+        if(!rst)
             {x0_q, x1_q, x2_q, x3_q, x4_q, Done} <= 0;
         else begin
             if(start) begin

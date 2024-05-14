@@ -127,19 +127,28 @@ module picosoc (
 	wire [31:0] simpleuart_reg_dat_do;
 	wire        simpleuart_reg_dat_wait;
 
-	wire        circuit_reg_seed_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0010);
+	wire        circuit_reg_seed_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_000a);
 	wire [31:0] circuit_reg_seed_do;
 
 	wire        circuit_reg_dat_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_000c);
 	wire [31:0] circuit_reg_dat_do;
 	wire        circuit_reg_dat_wait;
 
+	wire        enc_input_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_000e);
+	wire		enc_cipher_textxSO;
+	wire		enc_tagxSO;
+
+	wire        enc_encryption_start_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0010);
+	wire		enc_encryption_readyxSO;
+
 	assign mem_ready = (iomem_valid && iomem_ready) 
                         || bram_ready 
                         || simpleuart_reg_div_sel 
                         || (simpleuart_reg_dat_sel && !simpleuart_reg_dat_wait) 
                         || circuit_reg_seed_sel 
-                        || (circuit_reg_dat_sel && !circuit_reg_dat_wait);
+                        || (circuit_reg_dat_sel && !circuit_reg_dat_wait)
+                        || enc_input_sel
+                        || (enc_encryption_start_sel && !enc_encryption_readyxSO);
 
 	assign mem_rdata = (iomem_valid && iomem_ready) ? iomem_rdata 
       : simpleuart_reg_div_sel ? simpleuart_reg_div_do 
@@ -236,6 +245,32 @@ module picosoc (
 		.reg_dat_do  (simpleuart_reg_dat_do),
 		.reg_dat_wait(simpleuart_reg_dat_wait)
 	);
+
+	circuit circuit (
+		.clk         (clk         ),
+		.resetn      (resetn      ),
+
+        .reg_seed_we (circuit_reg_seed_sel ? mem_wstrb_combined : 4'b 0000),
+        .reg_seed_di (mem_wdata_combined),
+        .reg_seed_do (circuit_reg_seed_do),
+
+		.reg_dat_we  (circuit_reg_dat_sel ? mem_wstrb_combined[0] : 1'b 0),
+		.reg_dat_re  (circuit_reg_dat_sel && !mem_wstrb_combined),
+		.reg_dat_di  (mem_wdata_combined),
+		.reg_dat_do  (circuit_reg_dat_do),
+		.reg_dat_wait(circuit_reg_dat_wait)
+	);
+
+	AsconEncryption enc (
+		.clk					(clk),
+		.rst					(rst),
+		
+		.reg_input_we			(circuit_reg_seed_sel ? mem_wstrb_combined : 4'b 0000),
+		.keyxSI					(mem_wdata_combined[0]),
+		.noncexSI				(mem_wdata_combined[0]),
+		.associated_dataxSI		(mem_wdata_combined[0]),
+		.plain_textxSI			(mem_wdata_combined[0])
+	)
 
 	always @(posedge clk)
 		bram_ready <= mem_valid_combined && !mem_ready && (mem_addr_combined >= 32'h 0x0000_0000) && (mem_addr_combined < 32'h 0000_3400);

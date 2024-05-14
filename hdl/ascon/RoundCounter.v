@@ -10,7 +10,7 @@ module RoundCounter (
 );
     reg [4:0] ctr;
     always @(posedge clk) begin
-        if(rst)
+        if(!rst)
             ctr <= 0;
         else begin
             if(permutation_ready || ~permutation_start)

@@ -41,9 +41,11 @@ module PermutationTB();
 		$dumpfile("test_permutation.vcd");
 		$dumpvars;
     	$display("Start!");
+		resetn = 0;
+		#10 
 		resetn = 1;
 		#10 
-		resetn = 0;
+		resetn = 1;
 		S_in = 'hb1052995b8707739d6d42cbb78bb010af1c1629ec1ff700bda64243d428eb536db31c36d4de2971e;
 		rounds = 12;
 		$display("Permutation Input:\t%h", S_in);
@@ -58,6 +60,7 @@ module PermutationTB();
             check_time = $time - check_time;
             $display("Permutation done! It took%d clock cycles", check_time);
             $display("Permutation Output:\t%h", S_out);
+			$display("Is permutation ready:", permutation_ready);
             $finish;
         end
     end
