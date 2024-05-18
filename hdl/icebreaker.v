@@ -37,8 +37,7 @@ module icebreaker (
 
 	output ledr_n,
 	output ledg_n,
-    output observation,
-    output [7:0] pmod_hex
+    output observation
 
 );
 	parameter integer MEM_WORDS = 256;
@@ -119,14 +118,4 @@ pll mon_horloge(
 		.iomem_wdata  (iomem_wdata ),
 		.iomem_rdata  (iomem_rdata )
 	);
-    // reg [7:0] afficheur = 8'h 4f;
-    // reg [23:0] compteur = 0;
-    // afficheur_hexa afh (.clk(clk), .resetn(resetn), .value(afficheur),.pmod(pmod_hex));
-
-    // always @(posedge clock_out) begin
-    //   compteur <= compteur + 1;
-    //   if (compteur == 24'h 800000) begin
-    //     afficheur <= afficheur + 1;
-    //   end
-    // end
 endmodule

@@ -38,9 +38,7 @@ module EncTBPicosoc;
         encryption_readyxSO,
 
         reg_outxSS,
-        cipher_tagxSO,
-        output_readyxS0
-        // reg_data_waitxS0
+        cipher_tagxSO
     );
 
     // Generate clk signal

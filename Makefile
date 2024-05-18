@@ -6,8 +6,6 @@ PORT=ttyACM0
 LDFLAGS="-L/opt/homebrew/opt/icu4c/lib"
 VERILOG_SRC=./hdl/ascon/aead/Encryption.v \
 			./hdl/ascon/aead/SocEncryption.v \
-			./hdl/ascon/hash/Hash.v \
-			./hdl/ascon/hash/Hashing.v \
 			./hdl/ascon/permutation/ConstAddLayer.v \
 			./hdl/ascon/permutation/LinearLayer.v \
 			./hdl/ascon/permutation/SubLayer.v \
@@ -25,7 +23,7 @@ VERILOG_SRC=./hdl/ascon/aead/Encryption.v \
 all: icebreaker.bin
 
 icebreaker.json: $(VERILOG_SRC) 
-	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -json icebreaker.json -blif icebreaker.blif' $^
+	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -relut -dsp -retime -abc2 -json icebreaker.json -blif icebreaker.blif' $^
 
 show: icebreaker.json
 	nextpnr-ice40 --gui --freq 16 --$(ARCH) --package $(PACKAGE) --pcf $(PCF) --json icebreaker.json
@@ -47,7 +45,7 @@ clean:
 	@echo "Removing all test files..."
 	@rm -rf hdl/testbench/*test* hdl/testbench/*.pcd hdl/testbench/out/*output*
 	@echo "Removing all build outputs..."
-	@rm -f icebreaker.json icebreaker.log icebreaker.asc icebreaker.rpt icebreaker.bin
+	@rm -f icebreaker.json icebreaker.log icebreaker.asc icebreaker.rpt icebreaker.bin icebreaker.blif
 
 permutation:
 	@echo "Running permutation test case..."

@@ -176,12 +176,3 @@ set_io led5 114 # PMOD51
 set_io ledg_n 112 # PMOD52
 set_io ledr_n 107 # PMOD53
 set_io observation 143 # PMOD50
-
-set_io pmod_hex[0] 34 # A 
-set_io pmod_hex[1] 33 # B
-set_io pmod_hex[2] 22 # C
-set_io pmod_hex[3] 21 # D
-set_io pmod_hex[4] 32 # E
-set_io pmod_hex[5] 31 # F
-set_io pmod_hex[6] 26 # G
-set_io pmod_hex[7] 25 # CA
