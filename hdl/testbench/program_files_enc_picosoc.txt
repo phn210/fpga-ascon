@@ -1,0 +1,9 @@
+../ascon/aead/SocEncryption.v
+../ascon/aead/Encryption.v
+../ascon/permutation/Permutation.v
+../ascon/permutation/ConstAddLayer.v
+../ascon/permutation/LinearLayer.v
+../ascon/permutation/SubLayer.v
+../ascon/RoundCounter.v
+parameters_aead.v
+tb_enc_picosoc.v

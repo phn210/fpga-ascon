@@ -28,6 +28,11 @@ module AEADEncryption #(
     wire    [127:0]     tag;
     wire                ready, encryption_start, encryption_ready;
 
+    assign ready = ((i>k) && (i>128) && (i>l) && (i>y))? 1 : 0;
+    assign encryption_start = ready & encryption_startxSI;
+
+    assign encryption_readyxSO = encryption_ready;
+
     // Left shift for Inputs
     always @(posedge clk) begin
         if(!rst)
@@ -64,11 +69,6 @@ module AEADEncryption #(
             j <= j+1;
         end
     end
-
-    assign ready = ((i>k) && (i>128) && (i>l) && (i>y))? 1 : 0;
-    assign encryption_start = ready & encryption_startxSI;
-
-    assign encryption_readyxSO = encryption_ready;
     
     Encryption #(
         k,r,a,b,l,y

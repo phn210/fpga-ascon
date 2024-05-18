@@ -1,3 +1,5 @@
+.vscode/
+
 # Python cache folder
 __pycache__
 

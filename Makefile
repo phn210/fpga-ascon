@@ -4,9 +4,8 @@ PACKAGE=tq144:4k
 PCF=blackice-ii.pcf
 PORT=ttyACM0
 LDFLAGS="-L/opt/homebrew/opt/icu4c/lib"
-VERILOG_SRC=./hdl/ascon/aead/AEAD.v \
-			./hdl/ascon/aead/Encryption.v \
-			./hdl/ascon/aead/Decryption.v \
+VERILOG_SRC=./hdl/ascon/aead/Encryption.v \
+			./hdl/ascon/aead/SocEncryption.v \
 			./hdl/ascon/hash/Hash.v \
 			./hdl/ascon/hash/Hashing.v \
 			./hdl/ascon/permutation/ConstAddLayer.v \
@@ -14,7 +13,6 @@ VERILOG_SRC=./hdl/ascon/aead/AEAD.v \
 			./hdl/ascon/permutation/SubLayer.v \
 			./hdl/ascon/permutation/Permutation.v \
 			./hdl/ascon/RoundCounter.v \
-			./hdl/afficheur_hexa.v \
 			./hdl/sync_reset.v \
 			./hdl/pll.v \
 			./hdl/icebreaker.v \
@@ -84,6 +82,17 @@ encryption:
 		gtkwave test_enc.vcd; \
 	else \
 		./test_enc >> out/output_test_enc.txt; \
+	fi
+
+picosoc_encryption:
+	@echo "Running Picosoc Ascon AEAD encryption test case..."
+	@cd hdl/testbench && \
+	iverilog -o test_enc_picosoc -c program_files_enc_picosoc.txt && \
+	if [ "$(GTK_ENABLED)" = "1" ]; then \
+		./test_enc_picosoc >> out/output_test_enc_picosoc.txt; \
+		gtkwave test_enc_picosoc.vcd; \
+	else \
+		./test_enc_picosoc >> out/output_test_enc_picosoc.txt; \
 	fi
 
 decryption:
