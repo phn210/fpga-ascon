@@ -23,7 +23,7 @@ VERILOG_SRC=./hdl/ascon/aead/Encryption.v \
 all: icebreaker.bin
 
 icebreaker.json: $(VERILOG_SRC) 
-	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -relut -dsp -retime -abc2 -json icebreaker.json -blif icebreaker.blif' $^
+	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -abc9 -no-rw-check -json icebreaker.json -blif icebreaker.blif' $^
 
 show: icebreaker.json
 	nextpnr-ice40 --gui --freq 16 --$(ARCH) --package $(PACKAGE) --pcf $(PCF) --json icebreaker.json

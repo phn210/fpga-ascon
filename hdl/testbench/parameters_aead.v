@@ -2,8 +2,8 @@
 `define r 64
 `define a 12
 `define b 6
-`define l 80
-`define y 144
+`define l 16
+`define y 16
 `define KEY 'h62616265636166656261626563616665
 `define NONCE 'h31323334353637383132333435363738
 `define AD 'h61646c2070726f6a6574

@@ -4,7 +4,7 @@ module SocEncryption #(
     parameter a = 12,             // Initialization round no.
     parameter b = 6,              // Intermediate round no.
     parameter l = 16,            // Length of associated data
-    parameter y = 32             // Length of Plain Text
+    parameter y = 16             // Length of Plain Text
 )(
     input       clk,
     input       rst,
@@ -15,6 +15,9 @@ module SocEncryption #(
     input           reg_startxSS,
     input           encryption_startxSI,
 
+    input           reg_readyxSS,
+    output          encryption_readyxSO,
+
     input           reg_outxSS,
     output  [7:0]   cipher_tagxSO
 );
@@ -24,8 +27,8 @@ module SocEncryption #(
     reg     [l-1:0]     associated_data; 
     reg     [y-1:0]     plain_text;
     reg     [7:0]       i, j, o;
-    reg     [y-1:0]     cipher_text;
-    reg     [127:0]     tag;
+    wire    [y-1:0]     cipher_text;
+    wire    [127:0]     tag;
     wire                ready, encryption_start, encryption_ready;
 
     reg     [1:0]       state;
@@ -33,7 +36,7 @@ module SocEncryption #(
 
     assign ready = ((i>k) && (i>128) && (i>l) && (i>y)) ? 1 : 0;
     assign encryption_start = ready && reg_startxSS && encryption_startxSI;
-
+    assign encryption_readyxSO = encryption_ready;
     assign cipher_tagxSO = data_out;
 
     // Write inputs

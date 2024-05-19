@@ -10,7 +10,8 @@ module EncTBPicosoc;
 
     reg             reg_startxSS;
     reg             encryption_startxSI;
-    wire            encryption_readyxSO;
+    reg             reg_readyxSS;
+    wire             encryption_readyxSO;
 
     reg             reg_outxSS;
     wire  [7:0]     cipher_tagxSO;
@@ -35,6 +36,8 @@ module EncTBPicosoc;
 
         reg_startxSS,
         encryption_startxSI,
+
+        reg_readyxSS,
         encryption_readyxSO,
 
         reg_outxSS,
