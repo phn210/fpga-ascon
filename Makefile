@@ -39,7 +39,7 @@ pll.v:
 	icepll -i $(INPUT_FREQ) -o $(OUTPUT_FREQ) -m -f $@
 
 iceprog: icebreaker.bin
-	stty -f /dev/cu.usbmodem00000000001A1 raw 115200; cat icebreaker.bin >/dev/cu.usbmodem00000000001A1
+	stty 115200 -F /dev/ttyACM0 raw; cat icebreaker.bin > /dev/ttyACM0
 
 clean:
 	@echo "Removing all test files..."
