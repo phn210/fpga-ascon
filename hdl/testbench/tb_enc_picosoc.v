@@ -1,17 +1,16 @@
 `timescale 1ns/1ns
 module EncTBPicosoc;
-    parameter period = 20;
+    parameter period = 10;
     parameter max_input_len = (`k>=`y && `k>=`l)? `k: ((`y>=`l)? `y: `l);
 
     reg             clk = 0;
     reg             rst;
-    reg [3:0]       reg_inputxSS;
+    reg             reg_inputxSS;
     reg [31:0]      inputxSI;
 
     reg             reg_startxSS;
     reg             encryption_startxSI;
-    reg             reg_readyxSS;
-    wire             encryption_readyxSO;
+    wire            encryption_readyxSO;
 
     reg             reg_outxSS;
     wire  [7:0]     cipher_tagxSO;
@@ -22,6 +21,7 @@ module EncTBPicosoc;
     reg [`y-1:0]    cipher_text;
     reg [127:0]     tag;
     reg [7:0]       data_out;
+    wire [31:0]      plaintextxSO;
     
     integer         check_time;
 
@@ -36,12 +36,12 @@ module EncTBPicosoc;
 
         reg_startxSS,
         encryption_startxSI,
-
-        reg_readyxSS,
         encryption_readyxSO,
 
         reg_outxSS,
-        cipher_tagxSO
+        cipher_tagxSO,
+
+        plaintextxSO
     );
 
     // Generate clk signal
@@ -67,7 +67,7 @@ module EncTBPicosoc;
         @(posedge clk);
         data_out = cipher_tagxSO;
         $display("Output:\t%h", data_out);
-        if (i*8 > `y-1) begin
+        if (i*8 > `y) begin
             tag = {tag[119:0], data_out};
         end
         else begin
@@ -85,11 +85,14 @@ module EncTBPicosoc;
         rst = 1;
         ctr = 0;
         repeat(max_input_len/8) begin
-            #period
-            reg_inputxSS = 4'b 1111;
+            #(4*period)
+            reg_inputxSS = 1;
             write(ctr, `KEY, `NONCE, `AD, `PT);
             ctr = ctr + 1;
-            reg_inputxSS = 4'b 0000;
+            // #(2*period)
+            reg_inputxSS = 0;
+            $display("i:\t%d", dut.i);
+            $display("Plaintext:\t%h", dut.plaintextxSO);
         end
         ctr = 0;
         encryption_startxSI = 1;
@@ -103,20 +106,21 @@ module EncTBPicosoc;
         reg_startxSS = 1;
         encryption_startxSI = 1;
         #(4*period)
-        reg_startxSS = 0;
         encryption_startxSI = 0;
+        reg_startxSS = 0;
     end
 
     always @(*) begin
         if(encryption_readyxSO) begin
             check_time = $time - check_time;
             $display("Encryption done! It took%d clk cycles", check_time/(2*period));
-            reg_outxSS = 1;
             #(6*period)
-            reg_outxSS = 0;
             repeat(`y/8 + 17) begin
+                #(10*period)
+                reg_outxSS = 1;
                 read(ctr);
                 ctr = ctr + 1;
+                reg_outxSS = 0;
             end
             $display("CT:\t%h", cipher_text);
             $display("Tag:\t%h", tag);

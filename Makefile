@@ -23,7 +23,7 @@ VERILOG_SRC=./hdl/ascon/aead/Encryption.v \
 all: icebreaker.bin
 
 icebreaker.json: $(VERILOG_SRC) 
-	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -abc9 -no-rw-check -json icebreaker.json -blif icebreaker.blif' $^
+	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -no-rw-check -json icebreaker.json -blif icebreaker.blif' $^
 
 show: icebreaker.json
 	nextpnr-ice40 --gui --freq 16 --$(ARCH) --package $(PACKAGE) --pcf $(PCF) --json icebreaker.json
@@ -40,6 +40,12 @@ pll.v:
 
 iceprog: icebreaker.bin
 	stty 115200 -F /dev/ttyACM0 raw; cat icebreaker.bin > /dev/ttyACM0
+
+viewA:
+	stty 115200 -F /dev/ttyUSB0 raw -echo; cat /dev/ttyACM0
+
+viewB:
+	stty 115200 -F /dev/ttyUSB0 raw -echo; cat /dev/ttyUSB0
 
 clean:
 	@echo "Removing all test files..."

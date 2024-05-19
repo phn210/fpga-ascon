@@ -137,18 +137,25 @@ module picosoc (
 	wire		encryption_output_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0018);
 	wire [7:0] 	encryption_cipher_tagxS0;
 
+	wire		encryption_plaintext_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_001c);
+	wire [31:0]	encryption_plaintextxS0;
+
 	assign mem_ready = (iomem_valid && iomem_ready) 
                         || bram_ready 
                         || simpleuart_reg_div_sel 
                         || (simpleuart_reg_dat_sel && !simpleuart_reg_dat_wait) 
                         || encryption_input_sel 
 						|| encryption_start_sel
-                        || encryption_output_sel;
+						|| encryption_ready_sel
+						|| encryption_plaintext_sel
+                        || (encryption_output_sel && encryption_readyxSO);
 
 	assign mem_rdata = (iomem_valid && iomem_ready) ? iomem_rdata 
       : simpleuart_reg_div_sel ? simpleuart_reg_div_do 
-      : simpleuart_reg_dat_sel ? simpleuart_reg_dat_do 
+      : simpleuart_reg_dat_sel ? simpleuart_reg_dat_do
+	  :	encryption_ready_sel ? encryption_readyxSO
       : encryption_output_sel ? encryption_cipher_tagxS0 
+	  : encryption_plaintext_sel ? encryption_plaintextxS0
       : bram_ready ? bram_rdata : 32'h 0000_0000;
 
     reg [1:0]boot_sequence = 0;
@@ -244,23 +251,25 @@ module picosoc (
 		.clk					(clk),
 		.rst					(resetn),
 		
-		.reg_inputxSS			(encryption_input_sel ? mem_wstrb_combined : 4'b 0000),
+		.reg_inputxSS			(encryption_input_sel ? mem_wstrb_combined[0] : 1'b 0),
 		.inputxSI				(mem_wdata_combined),
 
-		.reg_startxSS			(encryption_start_sel ? mem_wstrb_combined : 1'b 0),
-    	.encryption_startxSI	(mem_wdata_combined[0]),
-
-		.reg_readyxSS			(encryption_ready_sel ? mem_wstrb_combined : 1'b 0),
+		.reg_startxSS			(encryption_start_sel ? mem_wstrb_combined[0] : 1'b 0),
+    	.encryption_startxSI	(mem_wdata_combined),
 		.encryption_readyxSO	(encryption_readyxSO),
 
     	.reg_outxSS				(encryption_output_sel && !mem_wstrb_combined),
-    	.cipher_tagxSO			(encryption_cipher_tagxS0)
+    	.cipher_tagxSO			(encryption_cipher_tagxS0),
+
+		.plaintextxSO			(encryption_plaintextxS0)
 	);
 
 	always @(posedge clk)
 		bram_ready <= mem_valid_combined && !mem_ready && (mem_addr_combined >= 32'h 0x0000_0000) && (mem_addr_combined < 32'h 0000_3400);
 
-    picosoc_mem_ram bram_only (
+    picosoc_mem_ram #( 
+        .WORDS(3328)
+    ) bram_only (
         .clk(clk),
         .wen(bram_ready ? mem_wstrb_combined : 4'b0),
         .addr(mem_addr_combined[23:2]),

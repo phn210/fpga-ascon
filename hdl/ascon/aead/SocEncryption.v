@@ -9,104 +9,74 @@ module SocEncryption #(
     input       clk,
     input       rst,
 
-    input   [3:0]   reg_inputxSS,
+    input           reg_inputxSS,
     input   [31:0]  inputxSI,
 
     input           reg_startxSS,
     input           encryption_startxSI,
-
-    input           reg_readyxSS,
     output          encryption_readyxSO,
 
     input           reg_outxSS,
-    output  [7:0]   cipher_tagxSO
+    output  [7:0]   cipher_tagxSO,
+    
+    output  [31:0]   plaintextxSO
 );
     
     reg     [k-1:0]     key;      
     reg     [127:0]     nonce;
     reg     [l-1:0]     associated_data; 
     reg     [y-1:0]     plain_text;
-    reg     [7:0]       i, j, o;
+    reg     [7:0]       i, o;
     wire    [y-1:0]     cipher_text;
     wire    [127:0]     tag;
     wire                ready, encryption_start, encryption_ready;
-
-    reg     [1:0]       state;
     reg     [7:0]       data_out;
 
-    assign ready = ((i>k) && (i>128) && (i>l) && (i>y)) ? 1 : 0;
+    assign ready = ((i>=k) && (i>=128) && (i>=l) && (i>=y)) ? 1 : 0;
     assign encryption_start = ready && reg_startxSS && encryption_startxSI;
     assign encryption_readyxSO = encryption_ready;
     assign cipher_tagxSO = data_out;
+    assign plaintextxSO = plain_text;
+    
 
     // Write inputs
     always @(posedge clk) begin
         if(!rst)
-            {key, nonce, associated_data, plain_text, i, j} <= 0;
+            {key, nonce, associated_data, plain_text, i, o, data_out} <= 0;
 
-        else begin
-            if(i < k && reg_inputxSS[0]) begin
+        else if (reg_inputxSS) begin
+
+            if(i < k) begin
                 key <= {key[k-9:0], inputxSI[7:0]}; 
             end
 
-            if(i < 128 && reg_inputxSS[1]) begin
+            if(i < 128) begin
                 nonce <= {nonce[119:0], inputxSI[15:8]};
             end
 
-            if(i < l && reg_inputxSS[2]) begin
+            if(i < l) begin
                 associated_data <= {associated_data[l-9:0], inputxSI[23:16]};
             end
 
-            if(i < y && reg_inputxSS[3]) begin
+            if(i < y) begin
                 plain_text <= {plain_text[y-9:0], inputxSI[31:24]};
             end
-            
-            i <= i+8;
+
+            if (!ready) i <= i+8;
         end
-    end
 
-    // Read outputs
-    always @(posedge clk) begin
-        if(!rst || encryption_start) begin
-            state <= 0;
-            o <= 0;
-        end
-        
-        if(encryption_ready) begin
-            case (state)
-                0: begin
-                    if (reg_outxSS) begin
-                        o <= 0;
-                        state <= 1;
-                    end
-                end
-                    
-                1: begin
-                    data_out <= cipher_text[y-1-o-:8];
-                    o <= o + 8;
-                    if (o > y-1) begin
-                        o <= 0;
-                        state <= 2;
-                    end
-                end
-
-                2: begin
-                    data_out <= tag[127-o-:8];
-                    o <= o + 8;
-                    if (o > 127) begin
-                        o <= 0;
-                        state <= 3;
-                    end
-                end
-
-                3: begin
-                    state <= 0;
-                end
-
-                default: begin
-                    state <= 0;
-                end
-            endcase
+        else if(encryption_ready && reg_outxSS) begin
+            if (o < y) begin
+                o <= o + 8;
+                data_out <= cipher_text[y-1-o-:8];
+            end
+            else if (o < y + 128) begin
+                o <= o + 8;
+                data_out <= tag[127-(o-y)-:8];
+            end
+            else begin
+                o <= 0;
+            end
         end
     end
     

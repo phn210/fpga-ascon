@@ -14,6 +14,7 @@
 #define reg_encryption_start (*(volatile uint32_t*)0x02000010)
 #define reg_encryption_ready (*(volatile uint32_t*)0x02000014)
 #define reg_encryption_output (*(volatile uint32_t*)0x02000018)
+#define reg_encryption_plaintext (*(volatile uint32_t*)0x0200001c)
 #define reg_leds (*(volatile uint32_t*)0x03000000)
 
 int main(void)
@@ -25,60 +26,86 @@ int main(void)
   char caractere;
     for(;;)
     {
-      reg_leds = 0xff;
+      // reg_leds = 0xff;
+      
+      print("Assigning inputs");
 
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x6d653162;
       reg_encryption_input = 0x31743261;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003362;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003465;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003563;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003661;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003766;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003865;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003162;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003261;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003362;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003465;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003563;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003661;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003766;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
       reg_encryption_input = 0x00003865;
+      // print("\n");
+      // print_hex(reg_encryption_plaintext, 8);
+      print("Assigning inputs done!\n");
 
+      print("Plaintext:\n");
+      print_hex(reg_encryption_plaintext, 8);
+
+      print("\n");
       reg_encryption_start = 1;
-      while(reg_encryption_ready == 0) {
-        print("Waiting for encryption to finish\n");
-      };
-      
-      print("Emcryption finished\n");
-    }
+      print_hex(reg_encryption_ready, 1);
+      reg_encryption_start = 0;
+      while(reg_encryption_ready == 0) {};
 
-  //  char caractere;
-  //   for(;;)
-  //   {
-  //     reg_leds = 0xff;
-  //     print("Seed: ");
-  //     print_hex(reg_circuit_seed,8);
-  //     print("\n");
-  //     reg_circuit_seed = 0xbabecafe;
-  //     print("Seed: ");
-  //     print_hex(reg_circuit_seed,8);
-  //     print("\n");
-  //     print("Valeur: ");
-  //     print_hex(reg_circuit_data,8);
-  //     print("\n");
-  //     print("Valeur: ");
-  //     print_hex(reg_circuit_data,8);
-  //     print("\n");
-  //     print("Valeur: ");
-  //     print_hex(reg_circuit_data,8);
-  //     print("\n");
-  //     print("Hello World!\n");
-  //     do{
-  //         caractere = getchar();
-  //         reg_leds = 0;
-  //     }
-  //     while (caractere == 0xFF);
-  //     print(&caractere);
-  //   }
-  
+      print_hex(reg_encryption_ready, 1);
+      print("\n");
+      print("Encryption finished\n");
+
+      for (int i = 0; i < 20; i++)
+      {
+        print_hex(reg_encryption_output, 8);
+        print("\n");
+      }
+
+      do{
+          caractere = getchar();
+          reg_leds = 0;
+      }
+      while (caractere == 0xFF);
+      print(&caractere);
+    } 
 }
