@@ -19,7 +19,6 @@ module Hashing #(
     reg     [31:0]      i,j;
     wire    [l-1:0]     hash_digest;
     wire                ready, hash_ready, start;
-    wire                permutation_ready, permutation_start;
 
     // Left shift for Inputs
     always @(posedge clk) begin

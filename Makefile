@@ -4,26 +4,41 @@ PACKAGE=tq144:4k
 PCF=blackice-ii.pcf
 PORT=ttyACM0
 LDFLAGS="-L/opt/homebrew/opt/icu4c/lib"
-VERILOG_SRC=./hdl/ascon/aead/Encryption.v \
-			./hdl/ascon/aead/SocEncryption.v \
-			./hdl/ascon/permutation/ConstAddLayer.v \
-			./hdl/ascon/permutation/LinearLayer.v \
-			./hdl/ascon/permutation/SubLayer.v \
-			./hdl/ascon/permutation/Permutation.v \
-			./hdl/ascon/RoundCounter.v \
-			./hdl/sync_reset.v \
-			./hdl/pll.v \
-			./hdl/icebreaker.v \
-			./hdl/simpleuart.v \
-			./hdl/hex_converter.v \
-			./hdl/load_firmware.v \
-			./hdl/picosoc.v \
-			./hdl/picorv32.v
+VERILOG_ENC_SRC=./hdl/ascon/aead/Encryption.v \
+				./hdl/ascon/aead/SocEncryption.v \
+				./hdl/ascon/permutation/ConstAddLayer.v \
+				./hdl/ascon/permutation/LinearLayer.v \
+				./hdl/ascon/permutation/SubLayer.v \
+				./hdl/ascon/permutation/Permutation.v \
+				./hdl/ascon/RoundCounter.v \
+				./hdl/sync_reset.v \
+				./hdl/pll.v \
+				./hdl/icebreaker.v \
+				./hdl/simpleuart.v \
+				./hdl/hex_converter.v \
+				./hdl/load_firmware.v \
+				./hdl/picosoc_enc.v \
+				./hdl/picorv32.v
+VERILOG_DEC_SRC=./hdl/ascon/aead/Decryption.v \
+				./hdl/ascon/aead/SocDecryption.v \
+				./hdl/ascon/permutation/ConstAddLayer.v \
+				./hdl/ascon/permutation/LinearLayer.v \
+				./hdl/ascon/permutation/SubLayer.v \
+				./hdl/ascon/permutation/Permutation.v \
+				./hdl/ascon/RoundCounter.v \
+				./hdl/sync_reset.v \
+				./hdl/pll.v \
+				./hdl/icebreaker.v \
+				./hdl/simpleuart.v \
+				./hdl/hex_converter.v \
+				./hdl/load_firmware.v \
+				./hdl/picosoc_dec.v \
+				./hdl/picorv32.v
 
 all: icebreaker.bin
 
-icebreaker.json: $(VERILOG_SRC) 
-	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -no-rw-check -json icebreaker.json -blif icebreaker.blif' $^
+icebreaker.json: $(VERILOG_ENC_SRC) 
+	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -dff -no-rw-check -json icebreaker.json -blif icebreaker.blif' $^
 
 show: icebreaker.json
 	nextpnr-ice40 --gui --freq 16 --$(ARCH) --package $(PACKAGE) --pcf $(PCF) --json icebreaker.json
@@ -88,17 +103,6 @@ encryption:
 		./test_enc >> out/output_test_enc.txt; \
 	fi
 
-picosoc_encryption:
-	@echo "Running Picosoc Ascon AEAD encryption test case..."
-	@cd hdl/testbench && \
-	iverilog -o test_enc_picosoc -c program_files_enc_picosoc.txt && \
-	if [ "$(GTK_ENABLED)" = "1" ]; then \
-		./test_enc_picosoc >> out/output_test_enc_picosoc.txt; \
-		gtkwave test_enc_picosoc.vcd; \
-	else \
-		./test_enc_picosoc >> out/output_test_enc_picosoc.txt; \
-	fi
-
 decryption:
 	@echo "Running Ascon AEAD decryption test case..."
 	@cd hdl/testbench && \
@@ -120,5 +124,38 @@ hash:
 		gtkwave test_hash.vcd; \
 	else \
 		./test_hash >> out/output_test_hash.txt; \
+	fi
+
+soc_encryption:
+	@echo "Running Picosoc Ascon AEAD encryption test case..."
+	@cd hdl/testbench && \
+	iverilog -o test_enc_soc -c program_files_enc_soc.txt && \
+	if [ "$(GTK_ENABLED)" = "1" ]; then \
+		./test_enc_soc >> out/output_test_enc_soc.txt; \
+		gtkwave test_enc_soc.vcd; \
+	else \
+		./test_enc_soc >> out/output_test_enc_soc.txt; \
+	fi
+
+soc_decryption:
+	@echo "Running Picosoc Ascon AEAD decryption test case..."
+	@cd hdl/testbench && \
+	iverilog -o test_dec_soc -c program_files_dec_soc.txt && \
+	if [ "$(GTK_ENABLED)" = "1" ]; then \
+		./test_dec_soc >> out/output_test_dec_soc.txt; \
+		gtkwave test_dec_soc.vcd; \
+	else \
+		./test_dec_soc >> out/output_test_dec_soc.txt; \
+	fi
+
+soc_hash:
+	@echo "Running Picosoc Ascon hash test case..."
+	@cd hdl/testbench && \
+	iverilog -o test_hash_soc -c program_files_hash_soc.txt && \
+	if [ "$(GTK_ENABLED)" = "1" ]; then \
+		./test_hash_soc >> out/output_test_hash_soc.txt; \
+		gtkwave test_hash_soc.vcd; \
+	else \
+		./test_hash_soc >> out/output_test_hash_soc.txt; \
 	fi
 	
