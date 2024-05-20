@@ -137,9 +137,6 @@ module picosoc (
 	wire		decryption_output_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0018);
 	wire [7:0] 	decryption_plain_tagxS0;
 
-	// wire		decryption_ciphertext_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_001c);
-	// wire [31:0]	decryption_ciphertextxS0;
-
 	assign mem_ready = (iomem_valid && iomem_ready) 
                         || bram_ready 
                         || simpleuart_reg_div_sel 
@@ -147,7 +144,6 @@ module picosoc (
                         || decryption_input_sel 
 						|| decryption_start_sel
 						|| decryption_ready_sel
-						// || decryption_ciphertext_sel
                         || (decryption_output_sel && decryption_readyxSO);
 
 	assign mem_rdata = (iomem_valid && iomem_ready) ? iomem_rdata 
@@ -155,7 +151,6 @@ module picosoc (
       : simpleuart_reg_dat_sel ? simpleuart_reg_dat_do
 	  :	decryption_ready_sel ? decryption_readyxSO
       : decryption_output_sel ? decryption_plain_tagxS0 
-	//   : decryption_ciphertext_sel ? decryption_ciphertextxS0
       : bram_ready ? bram_rdata : 32'h 0000_0000;
 
     reg [1:0]boot_sequence = 0;

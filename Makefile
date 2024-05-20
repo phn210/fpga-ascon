@@ -4,6 +4,8 @@ PACKAGE=tq144:4k
 PCF=blackice-ii.pcf
 PORT=ttyACM0
 LDFLAGS="-L/opt/homebrew/opt/icu4c/lib"
+
+MODE=0 # 0 = encryption, 1 = decryption, 2 = hash
 VERILOG_ENC_SRC=./hdl/ascon/aead/Encryption.v \
 				./hdl/ascon/aead/SocEncryption.v \
 				./hdl/ascon/permutation/ConstAddLayer.v \
@@ -49,10 +51,38 @@ VERILOG_HASH_SRC=./hdl/ascon/hash/Hash.v \
 				./hdl/load_firmware.v \
 				./hdl/picosoc_hash.v \
 				./hdl/picorv32.v
+VERILOG_SRC=./hdl/ascon/aead/Encryption.v \
+			./hdl/ascon/aead/SocEncryption.v \
+			./hdl/ascon/aead/Decryption.v \
+			./hdl/ascon/aead/SocDecryption.v \
+			./hdl/ascon/hash/Hash.v \
+			./hdl/ascon/hash/SocHashing.v \
+			./hdl/ascon/permutation/ConstAddLayer.v \
+			./hdl/ascon/permutation/LinearLayer.v \
+			./hdl/ascon/permutation/SubLayer.v \
+			./hdl/ascon/permutation/Permutation.v \
+			./hdl/ascon/RoundCounter.v \
+			./hdl/sync_reset.v \
+			./hdl/pll.v \
+			./hdl/icebreaker.v \
+			./hdl/simpleuart.v \
+			./hdl/hex_converter.v \
+			./hdl/load_firmware.v \
+			./hdl/picosoc.v \
+			./hdl/picorv32.v
+
+define SELECT_SRC
+$(if $(filter $(1),0),$(VERILOG_ENC_SRC),\
+$(if $(filter $(1),1),$(VERILOG_DEC_SRC),\
+$(if $(filter $(1),2),$(VERILOG_HASH_SRC),\
+$(if $(filter $(1),3),$(VERILOG_SRC)))))
+endef
+
+SELECTED_SRC := $(call SELECT_SRC,$(MODE))
 
 all: icebreaker.bin
 
-icebreaker.json: $(VERILOG_DEC_SRC) 
+icebreaker.json: $(SELECTED_SRC) 
 	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -dff -no-rw-check -json icebreaker.json -blif icebreaker.blif' $^
 
 show: icebreaker.json

@@ -127,20 +127,48 @@ module picosoc (
 	wire [31:0] simpleuart_reg_dat_do;
 	wire        simpleuart_reg_dat_wait;
 
-	wire        hash_input_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_000c);
+	wire        encryption_input_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_000c);
 
-	wire        hash_start_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0010);
+	wire        encryption_start_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0010);
 
-	wire        hash_ready_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0014);
+	wire        encryption_ready_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0014);
+	wire		encryption_readyxSO;
+
+	wire		encryption_output_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0018);
+	wire [7:0] 	encryption_cipher_tagxS0;
+
+	wire        decryption_input_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_001c);
+
+	wire        decryption_start_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0020);
+
+	wire        decryption_ready_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0024);
+	wire		decryption_readyxSO;
+
+	wire		decryption_output_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0028);
+	wire [7:0] 	decryption_plain_tagxS0;
+
+	wire        hash_input_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_002c);
+
+	wire        hash_start_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0030);
+
+	wire        hash_ready_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0034);
 	wire		hash_readyxSO;
 
-	wire		hash_output_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0018);
+	wire		hash_output_sel = mem_valid_combined && (mem_addr_combined == 32'h 0200_0038);
 	wire [7:0] 	hash_digestxS0;
 
 	assign mem_ready = (iomem_valid && iomem_ready) 
                         || bram_ready 
                         || simpleuart_reg_div_sel 
                         || (simpleuart_reg_dat_sel && !simpleuart_reg_dat_wait) 
+                        || encryption_input_sel 
+						|| encryption_start_sel
+						|| encryption_ready_sel
+                        || (encryption_output_sel && encryption_readyxSO) 
+                        || decryption_input_sel 
+						|| decryption_start_sel
+						|| decryption_ready_sel
+                        || (decryption_output_sel && decryption_readyxSO)
                         || hash_input_sel 
 						|| hash_start_sel
 						|| hash_ready_sel
@@ -149,6 +177,10 @@ module picosoc (
 	assign mem_rdata = (iomem_valid && iomem_ready) ? iomem_rdata 
       : simpleuart_reg_div_sel ? simpleuart_reg_div_do 
       : simpleuart_reg_dat_sel ? simpleuart_reg_dat_do
+	  :	encryption_ready_sel ? encryption_readyxSO
+      : encryption_output_sel ? encryption_cipher_tagxS0 
+	  :	decryption_ready_sel ? decryption_readyxSO
+      : decryption_output_sel ? decryption_plain_tagxS0 
 	  :	hash_ready_sel ? hash_readyxSO
       : hash_output_sel ? hash_digestxS0 
       : bram_ready ? bram_rdata : 32'h 0000_0000;
@@ -242,7 +274,43 @@ module picosoc (
 		.reg_dat_wait(simpleuart_reg_dat_wait)
 	);
 
-	SocHashing hash (
+	SocEncryption #(
+		.l(8), .y(8)
+	) enc (
+		.clk					(clk),
+		.rst					(resetn),
+		
+		.reg_inputxSS			(encryption_input_sel ? mem_wstrb_combined[0] : 1'b 0),
+		.inputxSI				(mem_wdata_combined),
+
+		.reg_startxSS			(encryption_start_sel ? mem_wstrb_combined[0] : 1'b 0),
+    	.encryption_startxSI	(mem_wdata_combined),
+		.encryption_readyxSO	(encryption_readyxSO),
+
+    	.reg_outxSS				(encryption_output_sel && !mem_wstrb_combined),
+    	.cipher_tagxSO			(encryption_cipher_tagxS0)
+	);
+
+	SocDecryption #(
+		.l(8), .y(8)
+	) dec (
+		.clk					(clk),
+		.rst					(resetn),
+		
+		.reg_inputxSS			(decryption_input_sel ? mem_wstrb_combined[0] : 1'b 0),
+		.inputxSI				(mem_wdata_combined),
+
+		.reg_startxSS			(decryption_start_sel ? mem_wstrb_combined[0] : 1'b 0),
+    	.decryption_startxSI	(mem_wdata_combined),
+		.decryption_readyxSO	(decryption_readyxSO),
+
+    	.reg_outxSS				(decryption_output_sel && !mem_wstrb_combined),
+    	.plain_tagxSO			(decryption_plain_tagxS0)
+	);
+
+	SocHashing #(
+		.y(8)
+	) hash (
 		.clk					(clk),
 		.rst					(resetn),
 		
@@ -250,8 +318,8 @@ module picosoc (
 		.messagexSI				(mem_wdata_combined),
 
 		.reg_startxSS			(hash_start_sel ? mem_wstrb_combined[0] : 1'b 0),
-    	.hash_startxSI			(mem_wdata_combined),
-		.hash_readyxSO			(hash_readyxSO),
+    	.hash_startxSI	(mem_wdata_combined),
+		.hash_readyxSO	(hash_readyxSO),
 
     	.reg_outxSS				(hash_output_sel && !mem_wstrb_combined),
     	.hash_digestxSO			(hash_digestxS0)
