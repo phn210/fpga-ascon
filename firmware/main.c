@@ -111,7 +111,7 @@ int main(void)
     case 2:
       print("===== Hash mode ===== \n");
       print("Assigning inputs");
-      for (int i = 0; i < 4; i++)
+      for (int i = 0; i < 2; i++)
       {
         reg_input = 0x62;
         reg_input = 0x6f;
@@ -130,70 +130,6 @@ int main(void)
         reg_input = 0x6d;
         reg_input = 0x31;
       }
-      // reg_input = 0x62;
-      // reg_input = 0x6f;
-      // reg_input = 0x6e;
-      // reg_input = 0x6a;
-      // reg_input = 0x6f;
-      // reg_input = 0x75;
-      // reg_input = 0x72;
-      // reg_input = 0x63;
-      // reg_input = 0x72;
-      // reg_input = 0x79;
-      // reg_input = 0x70;
-      // reg_input = 0x74;
-      // reg_input = 0x69;
-      // reg_input = 0x73;
-      // reg_input = 0x6d;
-      // reg_input = 0x31;
-      // reg_input = 0x62;
-      // reg_input = 0x6f;
-      // reg_input = 0x6e;
-      // reg_input = 0x6a;
-      // reg_input = 0x6f;
-      // reg_input = 0x75;
-      // reg_input = 0x72;
-      // reg_input = 0x63;
-      // reg_input = 0x72;
-      // reg_input = 0x79;
-      // reg_input = 0x70;
-      // reg_input = 0x74;
-      // reg_input = 0x69;
-      // reg_input = 0x73;
-      // reg_input = 0x6d;
-      // reg_input = 0x31;
-      // reg_input = 0x62;
-      // reg_input = 0x6f;
-      // reg_input = 0x6e;
-      // reg_input = 0x6a;
-      // reg_input = 0x6f;
-      // reg_input = 0x75;
-      // reg_input = 0x72;
-      // reg_input = 0x63;
-      // reg_input = 0x72;
-      // reg_input = 0x79;
-      // reg_input = 0x70;
-      // reg_input = 0x74;
-      // reg_input = 0x69;
-      // reg_input = 0x73;
-      // reg_input = 0x6d;
-      // reg_input = 0x31;
-      // reg_input = 0x62;
-      // reg_input = 0x6f;
-      // reg_input = 0x6e;
-      // reg_input = 0x6a;
-      // reg_input = 0x6f;
-      // reg_input = 0x75;
-      // reg_input = 0x72;
-      // reg_input = 0x63;
-      // reg_input = 0x72;
-      // reg_input = 0x79;
-      // reg_input = 0x70;
-      // reg_input = 0x74;
-      // reg_input = 0x69;
-      // reg_input = 0x73;
-      // reg_input = 0x6d;
-      // reg_input = 0x31;
       print("Assigning inputs done!\n");
 
       print("\n");
@@ -208,7 +144,7 @@ int main(void)
       print("\n");
       print("Hash finished\n");
 
-      for (int i = 0; i < 65; i++)
+      for (int i = 0; i < 33; i++)
       {
         print_hex(reg_output, 2);
       }

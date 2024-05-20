@@ -4,7 +4,7 @@ module SocHashing #(
     parameter b = 12,
     parameter h = 256,
     parameter l = 256,
-    parameter y = 512
+    parameter y = 384
 )(
     input           clk,
     input           rst,
