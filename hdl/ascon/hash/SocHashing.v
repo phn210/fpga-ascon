@@ -4,7 +4,7 @@ module SocHashing #(
     parameter b = 12,
     parameter h = 256,
     parameter l = 256,
-    parameter y = 40
+    parameter y = 512
 )(
     input           clk,
     input           rst,
@@ -27,8 +27,8 @@ module SocHashing #(
     wire                permutation_ready, permutation_start;
     reg     [7:0]       data_out;
 
-    assign ready = ((i>(y-1)) && (i>(l-1)) && (i>63)) ? 1 : 0;
-    assign start = ready & reg_startxSS & hash_startxSI;
+    assign ready = i > (y-1) ? 1 : 0;
+    assign start = ready && reg_startxSS && hash_startxSI;
     assign hash_readyxSO = hash_ready;
     assign hash_digestxSO = data_out;
     

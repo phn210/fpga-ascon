@@ -31,8 +31,8 @@ module HashTBPicosoc;
         messagexSI,
 
         reg_startxSS,
-        decryption_startxSI,
-        decryption_readyxSO,
+        hash_startxSI,
+        hash_readyxSO,
 
         reg_outxSS,
         hash_digestxSO
@@ -75,7 +75,6 @@ module HashTBPicosoc;
             ctr = ctr + 1;
             // #(2*period)
             reg_inputxSS = 0;
-            $display("i:\t%d", dut.i);
         end
         ctr = 0;
         #(0.5*period)
@@ -83,7 +82,10 @@ module HashTBPicosoc;
         check_time = $time;
         reg_startxSS = 1;
         hash_startxSI = 1;
+
+        $display("Start:\t%h", dut.start);
         #(4*period)
+        $display("Start:\t%h", dut.start);
         hash_startxSI = 0;
         reg_startxSS = 0;
     end
@@ -93,7 +95,7 @@ module HashTBPicosoc;
             check_time = $time - check_time;
             $display("Hash done! It took%d clk cycles", check_time/(2*period));
             #(6*period)
-            repeat(`y/8 + 17) begin
+            repeat(`l/8+1) begin
                 #(10*period)
                 reg_outxSS = 1;
                 read(ctr);

@@ -34,10 +34,25 @@ VERILOG_DEC_SRC=./hdl/ascon/aead/Decryption.v \
 				./hdl/load_firmware.v \
 				./hdl/picosoc_dec.v \
 				./hdl/picorv32.v
+VERILOG_HASH_SRC=./hdl/ascon/hash/Hash.v \
+				./hdl/ascon/hash/SocHashing.v \
+				./hdl/ascon/permutation/ConstAddLayer.v \
+				./hdl/ascon/permutation/LinearLayer.v \
+				./hdl/ascon/permutation/SubLayer.v \
+				./hdl/ascon/permutation/Permutation.v \
+				./hdl/ascon/RoundCounter.v \
+				./hdl/sync_reset.v \
+				./hdl/pll.v \
+				./hdl/icebreaker.v \
+				./hdl/simpleuart.v \
+				./hdl/hex_converter.v \
+				./hdl/load_firmware.v \
+				./hdl/picosoc_hash.v \
+				./hdl/picorv32.v
 
 all: icebreaker.bin
 
-icebreaker.json: $(VERILOG_ENC_SRC) 
+icebreaker.json: $(VERILOG_DEC_SRC) 
 	yosys -ql icebreaker.log -p 'synth_ice40 -top icebreaker -dff -no-rw-check -json icebreaker.json -blif icebreaker.blif' $^
 
 show: icebreaker.json
