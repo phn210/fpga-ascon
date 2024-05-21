@@ -3,8 +3,8 @@ module SocEncryption #(
     parameter r = 64,            // Rate
     parameter a = 12,             // Initialization round no.
     parameter b = 6,              // Intermediate round no.
-    parameter l = 64,            // Length of associated data
-    parameter y = 128             // Length of Plain Text
+    parameter l = 16,            // Length of associated data
+    parameter y = 16             // Length of Plain Text
 )(
     input           clk,
     input           rst,
